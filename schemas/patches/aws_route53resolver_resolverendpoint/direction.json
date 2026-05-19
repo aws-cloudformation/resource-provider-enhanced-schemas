@@ -1,0 +1,11 @@
+[
+ {
+  "op": "add",
+  "path": "/properties/Direction/enumCaseInsensitive",
+  "value": [
+   "INBOUND",
+   "INBOUND_DELEGATION",
+   "OUTBOUND"
+  ]
+ }
+]

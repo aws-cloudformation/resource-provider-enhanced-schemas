@@ -1,0 +1,7 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/Definition/oneOf/1/properties/Content/maxLength",
+  "value": 6500
+ }
+]

@@ -1,0 +1,27 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/BlockDeviceMapping/requiredXor",
+  "value": [
+   "VirtualName",
+   "Ebs",
+   "NoDevice"
+  ]
+ },
+ {
+  "op": "add",
+  "path": "/definitions/NetworkInterface/dependentExcluded",
+  "value": {
+   "AssociateCarrierIpAddress": [
+    "NetworkInterfaceId"
+   ],
+   "AssociatePublicIpAddress": [
+    "NetworkInterfaceId"
+   ],
+   "NetworkInterfaceId": [
+    "AssociateCarrierIpAddress",
+    "AssociatePublicIpAddress"
+   ]
+  }
+ }
+]

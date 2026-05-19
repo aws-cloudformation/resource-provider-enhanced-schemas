@@ -1,0 +1,11 @@
+[
+ {
+  "op": "test",
+  "path": "/deprecatedProperties",
+  "value": [
+   "/properties/Tags",
+   "/properties/Tags/TagKey",
+   "/properties/Tags/TagValue"
+  ]
+ }
+]

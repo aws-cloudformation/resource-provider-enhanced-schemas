@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools >= 80.10.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "cfn-enhanced-schemas"
+version = "0.1.0"
+description = "Enhanced CloudFormation resource provider schemas with validation constraints from AWS APIs, Smithy models, and expert knowledge"
+requires-python = ">=3.10"
+license = "MIT-0"
+keywords = ["aws", "cloudformation", "schemas"]
+authors = [
+  {email = "kddejong@amazon.com"},
+  {name = "Kevin DeJong"},
+]
+dependencies = [
+  "requests>=2.32.0",
+  "regex>=2024.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.12.0",
+  "mypy>=1.10.0",
+  "jsonschema>=4.20.0",
+]
+
+[project.scripts]
+cfn-schemas = "cfn_schemas.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/aws-cloudformation/resource-provider-enhanced-schemas"
+Issues = "https://github.com/aws-cloudformation/resource-provider-enhanced-schemas/issues"
+Source = "https://github.com/aws-cloudformation/resource-provider-enhanced-schemas"
+
+[tool.ruff]
+line-length = 100
+lint.select = ["E", "F", "I", "UP", "PL"]
+lint.ignore = ["PLR0915", "PLR2004", "PLR0912", "PLR0913", "PLW2901"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/cfn_schemas/generators/__init__.py" = ["PLC0415"]
+"tests/**" = ["PLC0415", "E501"]
+"src/cfn_schemas/generators/smithy.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-m not data"]
+markers = [
+  "data: schema data integrity tests (deselect with '-m \"not data\"')",
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+files = ["src/cfn_schemas/**/*.py"]
+
+[[tool.mypy.overrides]]
+module = "boto3.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "botocore.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "regex.*"
+ignore_missing_imports = true

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.claude/
+dist/
+build/
+*.egg
+.tox/
+schemas/resources/
+schemas/providers/
+schemas/metadata/

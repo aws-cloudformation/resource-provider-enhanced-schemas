@@ -1,0 +1,62 @@
+name: Build and Publish Schemas
+on:
+  schedule:
+    - cron: "0 */2 * * *"  # Every 2 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.repository == 'aws-cloudformation/resource-provider-enhanced-schemas'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -e ".[dev]"
+
+      - name: Generate schemas and patches
+        run: |
+          cfn-schemas generate --only schemas
+          cfn-schemas generate --only smithy --keep-going
+          cfn-schemas generate --only format
+          cfn-schemas generate --only lifecycle
+          cfn-schemas generate --only sam
+
+      - name: Assemble
+        run: |
+          cfn-schemas assemble --output build/cfnlint
+          cfn-schemas assemble --standard --output build/standard
+
+      - name: Validate assembled schemas
+        run: pytest tests/data/ -v --build-dir build/
+
+      - name: Package and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd build/cfnlint
+          zip -r ../../schemas-cfn-lint.zip resources/ providers/
+          cd ../standard
+          zip -r ../../schemas-standard.zip .
+          cd ../..
+
+          if ! gh release view latest &>/dev/null; then
+            git tag -f latest
+            git push -f origin latest
+            gh release create latest \
+              --title "Latest Schemas" \
+              --notes "Auto-updated enhanced CloudFormation schemas." \
+              --latest
+          fi
+
+          gh release edit latest \
+            --notes "Last updated: $(date -u +'%Y-%m-%d %H:%M UTC')"
+
+          gh release upload latest schemas-cfn-lint.zip --clobber
+          gh release upload latest schemas-standard.zip --clobber

@@ -1,0 +1,9 @@
+[
+ {
+  "op": "test",
+  "path": "/readOnlyProperties",
+  "value": [
+   "/properties/ProviderDetails/ActiveEncryptionCertificate"
+  ]
+ }
+]
