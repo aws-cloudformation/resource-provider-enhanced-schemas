@@ -1,0 +1,19 @@
+[
+ {
+  "op": "add",
+  "path": "/properties/AuthenticationStrategy/enumCaseInsensitive",
+  "value": [
+   "config_managed",
+   "ldap",
+   "simple"
+  ]
+ },
+ {
+  "op": "add",
+  "path": "/properties/EngineType/enumCaseInsensitive",
+  "value": [
+   "activemq",
+   "rabbitmq"
+  ]
+ }
+]

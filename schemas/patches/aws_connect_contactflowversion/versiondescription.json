@@ -1,9 +1,0 @@
-[
- {
-  "op": "test",
-  "path": "/conditionalCreateOnlyProperties",
-  "value": [
-   "/properties/VersionDescription"
-  ]
- }
-]
