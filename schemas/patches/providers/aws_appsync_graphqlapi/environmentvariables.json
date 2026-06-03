@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/properties/EnvironmentVariables",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/properties/EnvironmentVariables/format",
+  "value": "json"
+ }
+]

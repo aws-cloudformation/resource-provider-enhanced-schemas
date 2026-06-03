@@ -256,6 +256,8 @@ class SamGenerator(BaseGenerator):
                 if resolved:
                     schema["properties"][prop_name] = resolved
 
+        self._copy_missing_refs(schema)
+
     @staticmethod
     def _is_passthrough(prop_def: dict) -> bool:
         if not isinstance(prop_def, dict):
@@ -290,6 +292,35 @@ class SamGenerator(BaseGenerator):
         if key in all_defs:
             return all_defs[key].get("properties", {}).get(prop_name)
         return None
+
+    def _copy_missing_refs(self, schema: dict) -> None:
+        """Copy definitions referenced by $ref but missing from schema."""
+        definitions = schema.setdefault("definitions", {})
+        us_east = self.providers_dir / "us-east-1.json"
+        if not us_east.exists():
+            return
+        mappings = json.loads(us_east.read_text())
+
+        while True:
+            needed = _collect_refs(schema) - set(definitions.keys())
+            if not needed:
+                break
+            found_any = False
+            for h in mappings.values():
+                cfn_file = self.resources_dir / f"{h}.json"
+                if not cfn_file.exists():
+                    continue
+                cfn_schema = json.loads(cfn_file.read_text())
+                cfn_defs = cfn_schema.get("definitions", {})
+                for ref_name in list(needed):
+                    if ref_name in cfn_defs:
+                        definitions[ref_name] = _clean_schema(deepcopy(cfn_defs[ref_name]))
+                        needed.discard(ref_name)
+                        found_any = True
+                if not needed:
+                    break
+            if not found_any:
+                break
 
     def _lookup_cfn_prop(self, cfn_type: str, cfn_prop: str) -> dict | None:
         """Look up a property from a CF resource schema."""

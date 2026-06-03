@@ -18,6 +18,9 @@ on:
       - "pyproject.toml"
       - ".github/workflows/ci.yaml"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

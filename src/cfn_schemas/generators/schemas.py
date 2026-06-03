@@ -49,19 +49,6 @@ def _schema_url(region: str) -> str:
     return f"https://schema.cloudformation.{region}.amazonaws.com{suffix}/CloudformationSchema.zip"
 
 
-def _remove_descriptions(obj: Any) -> Any:
-    """Strip description fields to reduce schema size."""
-    if isinstance(obj, dict):
-        return {
-            k: _remove_descriptions(v)
-            for k, v in obj.items()
-            if k != "description"
-        }
-    if isinstance(obj, list):
-        return [_remove_descriptions(v) for v in obj]
-    return obj
-
-
 _EMPTY_DEF = {"additionalProperties": False, "properties": {}, "type": "object"}
 
 
@@ -75,35 +62,66 @@ def _remove_empty_definitions(spec: dict) -> dict:
     return spec
 
 
+def _navigate_to(target: Any, part: str) -> tuple[Any, bool]:
+    if isinstance(target, dict) and part in target:
+        return target[part], True
+    if isinstance(target, list):
+        try:
+            return target[int(part)], True
+        except (ValueError, IndexError):
+            return None, False
+    return None, False
+
+
 def _patch_add(spec: dict, parts: list[str], value: Any) -> None:
     target = spec
     for part in parts[:-1]:
-        if isinstance(target, dict):
+        next_target, found = _navigate_to(target, part)
+        if found:
+            target = next_target
+        elif isinstance(target, dict):
             target = target.setdefault(part, {})
+        else:
+            return
+    key = parts[-1]
     if isinstance(target, dict):
-        target[parts[-1]] = value
+        target[key] = value
+    elif isinstance(target, list):
+        try:
+            target[int(key)] = value
+        except (ValueError, IndexError):
+            pass
 
 
 def _patch_replace(spec: dict, parts: list[str], value: Any) -> None:
     target = spec
     for part in parts[:-1]:
-        if isinstance(target, dict) and part in target:
-            target = target[part]
+        next_target, found = _navigate_to(target, part)
+        if found:
+            target = next_target
         else:
             return
-    if isinstance(target, dict) and parts[-1] in target:
-        target[parts[-1]] = value
+    key = parts[-1]
+    if isinstance(target, dict) and key in target:
+        target[key] = value
+    elif isinstance(target, list):
+        try:
+            target[int(key)] = value
+        except (ValueError, IndexError):
+            pass
 
 
 def _patch_remove(spec: dict, parts: list[str]) -> None:
     target = spec
     for part in parts[:-1]:
-        if isinstance(target, dict) and part in target:
-            target = target[part]
+        next_target, found = _navigate_to(target, part)
+        if found:
+            target = next_target
         else:
             return
-    if isinstance(target, dict) and parts[-1] in target:
-        del target[parts[-1]]
+    key = parts[-1]
+    if isinstance(target, dict) and key in target:
+        del target[key]
 
 
 @register("schemas")
@@ -113,12 +131,16 @@ class SchemasGenerator(BaseGenerator):
     def run(self) -> None:
         self.resources_dir.mkdir(parents=True, exist_ok=True)
         self.providers_dir.mkdir(parents=True, exist_ok=True)
+        raw_dir = self.schemas_dir / "raw"
+        raw_dir.mkdir(parents=True, exist_ok=True)
         metadata_dir = self.schemas_dir / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
 
-        downloaded, failed = self._download_all_regions(metadata_dir)
+        downloaded_raw, downloaded_patched, failed = self._download_all_regions(
+            metadata_dir,
+        )
 
-        if not downloaded:
+        if not downloaded_patched:
             if failed:
                 logger.error("All regions failed to download")
             else:
@@ -126,23 +148,25 @@ class SchemasGenerator(BaseGenerator):
             return
 
         hash_to_schema, region_mappings = self._build_content_store(
-            downloaded,
+            downloaded_patched,
         )
+        self._build_raw_store(downloaded_raw, raw_dir)
         self._include_manual_schemas(hash_to_schema, region_mappings)
         self._write_region_mappings(region_mappings)
         self._cleanup_orphans()
 
         logger.info(
             "Updated %d regions, %d unique schemas",
-            len(downloaded), len(hash_to_schema),
+            len(downloaded_patched), len(hash_to_schema),
         )
         if failed:
             logger.warning("Failed regions: %s", ", ".join(failed))
 
     def _download_all_regions(
         self, metadata_dir: Path
-    ) -> tuple[dict[str, dict], list[str]]:
-        downloaded: dict[str, dict[str, str]] = {}
+    ) -> tuple[dict[str, dict], dict[str, dict], list[str]]:
+        downloaded_raw: dict[str, dict] = {}
+        downloaded_patched: dict[str, dict] = {}
         failed: list[str] = []
         for region in REGIONS:
             if region in _SKIP_REGIONS:
@@ -151,8 +175,24 @@ class SchemasGenerator(BaseGenerator):
             if result is None:
                 failed.append(region)
             elif result is not False:
-                downloaded[region] = result
-        return downloaded, failed
+                raw, patched = result
+                downloaded_raw[region] = raw
+                downloaded_patched[region] = patched
+        return downloaded_raw, downloaded_patched, failed
+
+    def _build_raw_store(
+        self, downloaded: dict[str, dict], raw_dir: Path,
+    ) -> None:
+        """Store raw (pre-patch) schemas for audit purposes."""
+        hash_to_schema: dict[str, dict] = {}
+        for schemas in downloaded.values():
+            for schema in schemas.values():
+                h = hashlib.sha256(
+                    json.dumps(schema, sort_keys=True).encode()
+                ).hexdigest()[:16]
+                hash_to_schema[h] = schema
+        for h, schema in hash_to_schema.items():
+            self.write_json(raw_dir / f"{h}.json", schema)
 
     def _build_content_store(
         self, downloaded: dict[str, dict]
@@ -221,10 +261,10 @@ class SchemasGenerator(BaseGenerator):
 
     def _download_region(
         self, region: str, metadata_dir: Path
-    ) -> dict[str, dict] | None | bool:
+    ) -> tuple[dict[str, dict], dict[str, dict]] | None | bool:
         """Download schemas for a region.
 
-        Returns dict of schemas, False (up-to-date), or None (failed).
+        Returns (raw, patched) tuple, False (up-to-date), or None (failed).
         """
         url = _schema_url(region)
 
@@ -252,24 +292,23 @@ class SchemasGenerator(BaseGenerator):
         meta_file = metadata_dir / f"{url_hash}.json"
         meta_file.write_text(json.dumps({"etag": etag, "url": url}))
 
-    def _parse_schema_zip(self, data: bytes) -> dict[str, dict]:
-        schemas: dict[str, dict] = {}
+    def _parse_schema_zip(self, data: bytes) -> tuple[dict[str, dict], dict[str, dict]]:
+        raw_schemas: dict[str, dict] = {}
+        patched_schemas: dict[str, dict] = {}
         with zipfile.ZipFile(BytesIO(data)) as zf:
             for name in zf.namelist():
                 if not name.endswith(".json"):
                     continue
                 spec = json.loads(zf.read(name))
-                spec.pop("handlers", None)
-                tagging = spec.get("tagging", {})
-                if "permissions" in tagging:
-                    del spec["tagging"]["permissions"]
-                spec = _remove_descriptions(spec)
                 type_name = spec.get("typeName", "")
                 if type_name:
-                    spec = self._apply_provider_patches(spec, type_name)
+                    raw_schemas[type_name] = spec
+                    spec = self._apply_provider_patches(
+                        json.loads(json.dumps(spec)), type_name,
+                    )
                     spec = _remove_empty_definitions(spec)
-                    schemas[type_name] = spec
-        return schemas
+                    patched_schemas[type_name] = spec
+        return raw_schemas, patched_schemas
 
     def _apply_extension_patches(self) -> None:
         """Apply all extension patches into the resource schema files."""
@@ -325,9 +364,9 @@ class SchemasGenerator(BaseGenerator):
     def _apply_provider_patches(
         self, spec: dict, type_name: str
     ) -> dict:
-        """Apply provider patches (base schema corrections)."""
+        """Apply provider patches (schema fixes) during download."""
         dir_name = self.resource_type_to_dir(type_name)
-        patch_dir = self.patches_dir / dir_name
+        patch_dir = self.schemas_dir / "patches" / "providers" / dir_name
         if not patch_dir.exists():
             return spec
 
@@ -380,6 +419,16 @@ class SchemasGenerator(BaseGenerator):
         for part in parts:
             if isinstance(target, dict) and part in target:
                 target = target[part]
+            elif isinstance(target, list):
+                try:
+                    target = target[int(part)]
+                except (ValueError, IndexError):
+                    logger.warning(
+                        "Provider patch test failed for %s:"
+                        " path %s not found (%s)",
+                        type_name, path, patch_file.name,
+                    )
+                    return False
             else:
                 logger.warning(
                     "Provider patch test failed for %s:"
@@ -387,7 +436,7 @@ class SchemasGenerator(BaseGenerator):
                     type_name, path, patch_file.name,
                 )
                 return False
-        if target != value:
+        if not self._test_values_match(target, value):
             logger.warning(
                 "Provider patch test failed for %s:"
                 " %s expected %r got %r (%s)",
@@ -395,6 +444,25 @@ class SchemasGenerator(BaseGenerator):
             )
             return False
         return True
+
+    @staticmethod
+    def _test_values_match(actual: Any, expected: Any) -> bool:
+        """Compare values ignoring description fields."""
+        if isinstance(expected, dict) and isinstance(actual, dict):
+            for k, v in expected.items():
+                if k not in actual:
+                    return False
+                if not SchemasGenerator._test_values_match(actual[k], v):
+                    return False
+            return True
+        if isinstance(expected, list) and isinstance(actual, list):
+            if len(expected) != len(actual):
+                return False
+            return all(
+                SchemasGenerator._test_values_match(a, e)
+                for a, e in zip(actual, expected)
+            )
+        return actual == expected
 
     def _has_newer_version(
         self, url: str, metadata_dir: Path

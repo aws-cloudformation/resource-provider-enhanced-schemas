@@ -13,3 +13,4 @@ build/
 schemas/resources/
 schemas/providers/
 schemas/metadata/
+schemas/raw/

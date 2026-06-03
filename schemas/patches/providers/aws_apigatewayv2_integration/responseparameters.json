@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/properties/ResponseParameters",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/properties/ResponseParameters/format",
+  "value": "json"
+ }
+]

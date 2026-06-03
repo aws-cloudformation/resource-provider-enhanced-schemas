@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/properties/Parameters",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/properties/Parameters/format",
+  "value": "json"
+ }
+]

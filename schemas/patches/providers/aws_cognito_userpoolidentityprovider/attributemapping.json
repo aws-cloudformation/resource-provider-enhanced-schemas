@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/properties/AttributeMapping",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/properties/AttributeMapping/format",
+  "value": "json"
+ }
+]

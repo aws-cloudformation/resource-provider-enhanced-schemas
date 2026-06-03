@@ -23,7 +23,7 @@ class BaseGenerator(ABC):
         self.schemas_dir = schemas_dir
         self.resources_dir = schemas_dir / "resources"
         self.providers_dir = schemas_dir / "providers"
-        self.patches_dir = schemas_dir / "patches"
+        self.patches_dir = schemas_dir / "patches" / "extensions"
 
     @abstractmethod
     def run(self) -> None:

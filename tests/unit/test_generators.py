@@ -179,7 +179,7 @@ class TestLifecycleGenerator:
 class TestManualGenerator:
     def test_validates_good_patches(self, tmp_path):
         _make_generator(tmp_path)
-        patches_dir = tmp_path / "schemas" / "patches" / "aws_s3_bucket"
+        patches_dir = tmp_path / "schemas" / "patches" / "extensions" / "aws_s3_bucket"
         patches_dir.mkdir(parents=True)
         (patches_dir / "manual.json").write_text(
             json.dumps([{"op": "add", "path": "/properties/X/enum", "value": ["a"]}])
@@ -189,7 +189,7 @@ class TestManualGenerator:
         m.run()  # should not raise
 
     def test_rejects_bad_op(self, tmp_path):
-        patches_dir = tmp_path / "schemas" / "patches" / "aws_s3_bucket"
+        patches_dir = tmp_path / "schemas" / "patches" / "extensions" / "aws_s3_bucket"
         patches_dir.mkdir(parents=True)
         (patches_dir / "manual.json").write_text(
             json.dumps([{"op": "invalid", "path": "/x"}])

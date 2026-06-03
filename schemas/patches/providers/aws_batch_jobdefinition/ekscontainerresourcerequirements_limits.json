@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/definitions/EksContainerResourceRequirements/properties/Limits",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/EksContainerResourceRequirements/properties/Limits/format",
+  "value": "json"
+ }
+]

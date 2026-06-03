@@ -1,0 +1,27 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/AzureIdentityServiceDetails/properties/WebIdentityRoleArn/format",
+  "value": "AWS::IAM::Role.Arn"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/MCPServerSigV4AuthorizationConfig/properties/RoleArn/format",
+  "value": "AWS::IAM::Role.Arn"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/RegisteredAzureIdentityDetails/properties/WebIdentityRoleArn/format",
+  "value": "AWS::IAM::Role.Arn"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/RegisteredMCPServerSigV4Details/properties/RoleArn/format",
+  "value": "AWS::IAM::Role.Arn"
+ },
+ {
+  "op": "add",
+  "path": "/properties/KmsKeyArn/format",
+  "value": "AWS::KMS::Key.Arn"
+ }
+]

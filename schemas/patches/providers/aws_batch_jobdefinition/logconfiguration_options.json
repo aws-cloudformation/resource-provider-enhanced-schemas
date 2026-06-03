@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/definitions/LogConfiguration/properties/Options",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/LogConfiguration/properties/Options/format",
+  "value": "json"
+ }
+]

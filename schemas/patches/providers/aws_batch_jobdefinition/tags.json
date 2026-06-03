@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/properties/Tags",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/properties/Tags/format",
+  "value": "json"
+ }
+]

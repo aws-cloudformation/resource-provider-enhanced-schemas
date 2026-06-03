@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/properties/RequestTemplates",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/properties/RequestTemplates/format",
+  "value": "json"
+ }
+]

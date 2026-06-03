@@ -165,8 +165,21 @@ def audit_patches(schemas_dir: Path) -> AuditResult:
 
     schema_cache: dict[str, dict] = {}
 
+    raw_dir = schemas_dir / "raw"
+    if raw_dir.exists():
+        raw_hashes: dict[str, set[str]] = {}
+        for provider_file in sorted((schemas_dir / "providers").glob("*.json")):
+            mappings = json.loads(provider_file.read_text())
+            for rt, h in mappings.items():
+                raw_hashes.setdefault(rt, set()).add(h)
+        raw_cache: dict[str, dict] = {}
+        _audit_patch_dir(
+            schemas_dir / "patches" / "providers",
+            raw_dir, raw_hashes, raw_cache, result,
+        )
+
     _audit_patch_dir(
-        schemas_dir / "patches",
+        schemas_dir / "patches" / "extensions",
         resources_dir, type_to_hashes, schema_cache, result,
     )
 

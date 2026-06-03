@@ -1,0 +1,14 @@
+[
+ {
+  "op": "test",
+  "path": "/properties/ClientMetadata",
+  "value": {
+   "type": "object"
+  }
+ },
+ {
+  "op": "add",
+  "path": "/properties/ClientMetadata/format",
+  "value": "json"
+ }
+]
