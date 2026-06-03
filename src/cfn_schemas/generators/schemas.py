@@ -75,35 +75,66 @@ def _remove_empty_definitions(spec: dict) -> dict:
     return spec
 
 
+def _navigate_to(target: Any, part: str) -> tuple[Any, bool]:
+    if isinstance(target, dict) and part in target:
+        return target[part], True
+    if isinstance(target, list):
+        try:
+            return target[int(part)], True
+        except (ValueError, IndexError):
+            return None, False
+    return None, False
+
+
 def _patch_add(spec: dict, parts: list[str], value: Any) -> None:
     target = spec
     for part in parts[:-1]:
-        if isinstance(target, dict):
+        next_target, found = _navigate_to(target, part)
+        if found:
+            target = next_target
+        elif isinstance(target, dict):
             target = target.setdefault(part, {})
+        else:
+            return
+    key = parts[-1]
     if isinstance(target, dict):
-        target[parts[-1]] = value
+        target[key] = value
+    elif isinstance(target, list):
+        try:
+            target[int(key)] = value
+        except (ValueError, IndexError):
+            pass
 
 
 def _patch_replace(spec: dict, parts: list[str], value: Any) -> None:
     target = spec
     for part in parts[:-1]:
-        if isinstance(target, dict) and part in target:
-            target = target[part]
+        next_target, found = _navigate_to(target, part)
+        if found:
+            target = next_target
         else:
             return
-    if isinstance(target, dict) and parts[-1] in target:
-        target[parts[-1]] = value
+    key = parts[-1]
+    if isinstance(target, dict) and key in target:
+        target[key] = value
+    elif isinstance(target, list):
+        try:
+            target[int(key)] = value
+        except (ValueError, IndexError):
+            pass
 
 
 def _patch_remove(spec: dict, parts: list[str]) -> None:
     target = spec
     for part in parts[:-1]:
-        if isinstance(target, dict) and part in target:
-            target = target[part]
+        next_target, found = _navigate_to(target, part)
+        if found:
+            target = next_target
         else:
             return
-    if isinstance(target, dict) and parts[-1] in target:
-        del target[parts[-1]]
+    key = parts[-1]
+    if isinstance(target, dict) and key in target:
+        del target[key]
 
 
 @register("schemas")
@@ -380,6 +411,16 @@ class SchemasGenerator(BaseGenerator):
         for part in parts:
             if isinstance(target, dict) and part in target:
                 target = target[part]
+            elif isinstance(target, list):
+                try:
+                    target = target[int(part)]
+                except (ValueError, IndexError):
+                    logger.warning(
+                        "Provider patch test failed for %s:"
+                        " path %s not found (%s)",
+                        type_name, path, patch_file.name,
+                    )
+                    return False
             else:
                 logger.warning(
                     "Provider patch test failed for %s:"
