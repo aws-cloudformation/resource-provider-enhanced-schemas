@@ -16,13 +16,22 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _navigate(target: Any, part: str) -> tuple[Any, bool]:
+    """Navigate one level into a schema node. Returns (value, found)."""
+    if isinstance(target, dict) and part in target:
+        return target[part], True
+    if isinstance(target, list):
+        try:
+            return target[int(part)], True
+        except (ValueError, IndexError):
+            return None, False
+    return None, False
+
+
 def apply_patches(
     schema: dict[str, Any], patches: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    """Apply RFC 6902-style JSON patches to a schema.
-
-    Only supports 'add' and 'remove' ops (which is all our generators produce).
-    """
+    """Apply RFC 6902-style JSON patches to a schema."""
     for patch in patches:
         op = patch.get("op")
         path = patch.get("path", "")
@@ -34,19 +43,45 @@ def apply_patches(
                 schema.update(value)
             continue
 
+        if op == "test":
+            target = schema
+            for part in parts:
+                target, found = _navigate(target, part)
+                if not found:
+                    return schema
+            if target != value:
+                return schema
+            continue
+
         target = schema
         for part in parts[:-1]:
-            if isinstance(target, dict):
+            next_target, found = _navigate(target, part)
+            if found:
+                target = next_target
+            elif isinstance(target, dict):
                 target = target.setdefault(part, {})
-            elif isinstance(target, list):
-                target = target[int(part)]
+            else:
+                break
 
         key = parts[-1]
         if op == "add":
             if isinstance(target, list) and key == "-":
                 target.append(value)
+            elif isinstance(target, list):
+                try:
+                    target[int(key)] = value
+                except (ValueError, IndexError):
+                    pass
             elif isinstance(target, dict):
                 target[key] = value
+        elif op == "replace":
+            if isinstance(target, dict) and key in target:
+                target[key] = value
+            elif isinstance(target, list):
+                try:
+                    target[int(key)] = value
+                except (ValueError, IndexError):
+                    pass
         elif op == "remove":
             if isinstance(target, dict) and key in target:
                 del target[key]
@@ -60,7 +95,7 @@ def assemble_schema(
 ) -> dict[str, Any]:
     """Apply all patch files to a base schema."""
     schema = json.loads(json.dumps(base_schema))  # deep copy
-    for patch_file in sorted(patch_files):
+    for patch_file in patch_files:
         patches = json.loads(patch_file.read_text())
         schema = apply_patches(schema, patches)
     return schema
@@ -133,17 +168,30 @@ def _get_patch_files(patches_dir: Path, resource_type: str) -> list[Path]:
     return []
 
 
+def _get_all_patch_files(schemas_dir: Path, resource_type: str) -> list[Path]:
+    """Get patch files from both providers and extensions in order."""
+    dir_name = resource_type.replace("::", "_").lower()
+    files: list[Path] = []
+    providers_dir = schemas_dir / "patches" / "providers" / dir_name
+    if providers_dir.exists():
+        files.extend(sorted(providers_dir.glob("*.json")))
+    extensions_dir = schemas_dir / "patches" / "extensions" / dir_name
+    if extensions_dir.exists():
+        files.extend(sorted(extensions_dir.glob("*.json")))
+    return files
+
+
 def _assemble_resource(
     resource_type: str,
     schema_hash: str,
     resources_dir: Path,
-    patches_dir: Path,
+    schemas_dir: Path,
 ) -> dict[str, Any] | None:
     schema_file = resources_dir / f"{schema_hash}.json"
     if not schema_file.exists():
         return None
     base = json.loads(schema_file.read_text())
-    patch_files = _get_patch_files(patches_dir, resource_type)
+    patch_files = _get_all_patch_files(schemas_dir, resource_type)
     return assemble_schema(base, patch_files)
 
 
@@ -160,21 +208,20 @@ def assemble_all(
     """
     providers_dir = schemas_dir / "providers"
     resources_dir = schemas_dir / "resources"
-    patches_dir = schemas_dir / "patches"
 
     if standard:
         return _assemble_standard(
-            providers_dir, resources_dir, patches_dir, output_dir,
+            providers_dir, resources_dir, schemas_dir, output_dir,
         )
     return _assemble_cfnlint(
-        providers_dir, resources_dir, patches_dir, output_dir,
+        providers_dir, resources_dir, schemas_dir, output_dir,
     )
 
 
 def _assemble_cfnlint(
     providers_dir: Path,
     resources_dir: Path,
-    patches_dir: Path,
+    schemas_dir: Path,
     output_dir: Path,
 ) -> int:
     """Assemble with region mappings and content-addressed schemas."""
@@ -184,13 +231,17 @@ def _assemble_cfnlint(
     out_providers.mkdir(parents=True, exist_ok=True)
 
     type_to_assembled: dict[str, dict] = {}
-    for provider_file in sorted(providers_dir.glob("*.json")):
+    provider_files = sorted(providers_dir.glob("*.json"))
+    primary = providers_dir / "us-east-1.json"
+    if primary.exists():
+        provider_files = [primary] + [f for f in provider_files if f != primary]
+    for provider_file in provider_files:
         mappings = json.loads(provider_file.read_text())
         for resource_type, schema_hash in mappings.items():
             if resource_type in type_to_assembled:
                 continue
             assembled = _assemble_resource(
-                resource_type, schema_hash, resources_dir, patches_dir,
+                resource_type, schema_hash, resources_dir, schemas_dir,
             )
             if assembled:
                 type_to_assembled[resource_type] = assembled
@@ -223,7 +274,7 @@ def _assemble_cfnlint(
 def _assemble_standard(
     providers_dir: Path,
     resources_dir: Path,
-    patches_dir: Path,
+    schemas_dir: Path,
     output_dir: Path,
 ) -> int:
     """Assemble flat per-resource-type files with standard JSON Schema."""
@@ -244,7 +295,7 @@ def _assemble_standard(
     count = 0
     for resource_type, schema_hash in sorted(all_types.items()):
         assembled = _assemble_resource(
-            resource_type, schema_hash, resources_dir, patches_dir,
+            resource_type, schema_hash, resources_dir, schemas_dir,
         )
         if not assembled:
             continue

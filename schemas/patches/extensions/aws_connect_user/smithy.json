@@ -1,0 +1,22 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/FirstName/minLength",
+  "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/definitions/FirstName/maxLength",
+  "value": 255
+ },
+ {
+  "op": "add",
+  "path": "/definitions/LastName/minLength",
+  "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/definitions/LastName/maxLength",
+  "value": 300
+ }
+]

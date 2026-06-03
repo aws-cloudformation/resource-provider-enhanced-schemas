@@ -47,6 +47,15 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::Bedrock::Guardrail": ["/definitions/SensitiveInformationPolicyConfig/properties/RegexesConfig"],
     "AWS::Connect::RoutingProfile": ["/properties/QueueConfigs"],
     "AWS::Connect::User": ["/definitions/DeskPhoneNumber"],
+    "AWS::DynamoDB::Table": [
+        "/definitions/LocalSecondaryIndex/properties/KeySchema",
+        "/definitions/Projection/properties/NonKeyAttributes",
+        "/definitions/ProvisionedThroughput/properties/ReadCapacityUnits",
+        "/definitions/ProvisionedThroughput/properties/WriteCapacityUnits",
+    ],
+    "AWS::DynamoDB::GlobalTable": [
+        "/definitions/LocalSecondaryIndex/properties/KeySchema",
+    ],
     "AWS::ElasticLoadBalancingV2::LoadBalancer": ["/properties/Tags"],
     "AWS::ElasticLoadBalancingV2::TargetGroup": ["/properties/Tags"],
     "AWS::MSK::Cluster": ["/properties/NumberOfBrokerNodes"],
@@ -74,6 +83,7 @@ _PATH_EXCEPTIONS: dict[str, list[str]] = {
     "securityhub": ["/definitions/MapFilter/properties/Value"],
     "rds": ["/properties/ReplicaMode"],
     "ec2": ["/properties/Domain", "/properties/Type"],
+    "iam": ["/properties/InstanceProfileName"],
 }
 
 # Smithy service name → CF service name

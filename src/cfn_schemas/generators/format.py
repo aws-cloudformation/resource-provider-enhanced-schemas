@@ -54,7 +54,13 @@ def _make_patch(
     if ref == "#/definitions/Arn":
         return None
 
+    original_ref = ref
     ref, resolved = _resolve_through_refs(ref, resolver)
+
+    if ref == "#/definitions/Arn":
+        ref = original_ref
+        _, resolved = resolver.resolve(ref)
+
     path = ref[1:]  # strip leading #
 
     if isinstance(resolved, dict) and "items" in resolved:
@@ -225,10 +231,6 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
     ],
     "AWS::Lambda::Function": [
         _fmt("/properties/Arn/format", "AWS::Lambda::Function.Arn"),
-        _fmt(
-            "/properties/FunctionName/format",
-            "AWS::Lambda::Function.Name",
-        ),
     ],
     "AWS::KMS::Key": [
         _fmt("/properties/Arn/format", "AWS::KMS::Key.Arn"),

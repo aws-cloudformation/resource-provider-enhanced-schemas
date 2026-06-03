@@ -325,9 +325,9 @@ class SchemasGenerator(BaseGenerator):
     def _apply_provider_patches(
         self, spec: dict, type_name: str
     ) -> dict:
-        """Apply provider patches (base schema corrections)."""
+        """Apply provider patches (schema fixes) during download."""
         dir_name = self.resource_type_to_dir(type_name)
-        patch_dir = self.patches_dir / dir_name
+        patch_dir = self.schemas_dir / "patches" / "providers" / dir_name
         if not patch_dir.exists():
             return spec
 

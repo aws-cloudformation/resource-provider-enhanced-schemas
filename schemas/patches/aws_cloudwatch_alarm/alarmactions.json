@@ -1,7 +1,0 @@
-[
- {
-  "op": "test",
-  "path": "/properties/AlarmActions/maxItems",
-  "value": 5
- }
-]
