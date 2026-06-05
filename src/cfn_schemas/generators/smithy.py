@@ -58,9 +58,45 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
         "/definitions/KeySchema",
         "/definitions/LocalSecondaryIndex/properties/KeySchema",
     ],
+    "AWS::EC2::Instance": ["/properties/InstanceType"],
+    "AWS::EC2::LaunchTemplate": [
+        "/definitions/LaunchTemplateData/properties/InstanceType",
+    ],
+    "AWS::EC2::EC2Fleet": [
+        "/definitions/FleetLaunchTemplateOverridesRequest/properties/InstanceType",
+    ],
+    "AWS::EC2::CapacityReservationFleet": [
+        "/definitions/InstanceTypeSpecification/properties/InstanceType",
+    ],
+    "AWS::ElastiCache::ReplicationGroup": ["/properties/UserGroupIds"],
     "AWS::ElasticLoadBalancingV2::LoadBalancer": ["/properties/Tags"],
     "AWS::ElasticLoadBalancingV2::TargetGroup": ["/properties/Tags"],
+    "AWS::GameLift::GameServerGroup": ["/definitions/InstanceType"],
     "AWS::MSK::Cluster": ["/properties/NumberOfBrokerNodes"],
+    "AWS::SageMaker::Cluster": ["/definitions/InstanceType"],
+    "AWS::SageMaker::DataQualityJobDefinition": [
+        "/definitions/ClusterConfig/properties/InstanceType",
+    ],
+    "AWS::SageMaker::InferenceExperiment": [
+        "/definitions/RealTimeInferenceConfig/properties/InstanceType",
+    ],
+    "AWS::SageMaker::ModelBiasJobDefinition": [
+        "/definitions/ClusterConfig/properties/InstanceType",
+    ],
+    "AWS::SageMaker::ModelExplainabilityJobDefinition": [
+        "/definitions/ClusterConfig/properties/InstanceType",
+    ],
+    "AWS::SageMaker::ModelPackage": [
+        "/definitions/InferenceInstanceType",
+        "/definitions/TransformInstanceType",
+        "/definitions/TransformResources/properties/InstanceType",
+    ],
+    "AWS::SageMaker::ModelQualityJobDefinition": [
+        "/definitions/ClusterConfig/properties/InstanceType",
+    ],
+    "AWS::SageMaker::MonitoringSchedule": [
+        "/definitions/ClusterConfig/properties/InstanceType",
+    ],
     "AWS::SNS::Topic": ["/properties/TopicName"],
     "AWS::Lambda::Function": ["/properties/Layers/items"],
     "AWS::Logs::LogAnomalyDetector": ["/properties/LogGroupArnList/items"],
@@ -71,7 +107,7 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
 _CASE_INSENSITIVE_PREFIXES = [
     "AWS::AmazonMQ::", "AWS::Batch::", "AWS::EC2::EIP", "AWS::EC2::IPAMPool",
     "AWS::EC2::NetworkAcl", "AWS::EC2::SecurityGroup", "AWS::EC2::Volume",
-    "AWS::Route53Resolver::",
+    "AWS::ElastiCache::", "AWS::Route53Resolver::",
 ]
 
 _PATH_EXCEPTIONS: dict[str, list[str]] = {
