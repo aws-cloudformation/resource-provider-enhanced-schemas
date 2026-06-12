@@ -6,14 +6,5 @@
    "Subnets",
    "SubnetMappings"
   ]
- },
- {
-  "op": "add",
-  "path": "/properties/Type/enum",
-  "value": [
-   "application",
-   "network",
-   "gateway"
-  ]
  }
 ]

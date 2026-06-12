@@ -27,16 +27,6 @@
  {
   "op": "add",
   "path": "/properties/Path/pattern",
-  "value": "^/(.+/)*$"
- },
- {
-  "op": "add",
-  "path": "/properties/RoleName/maxLength",
-  "value": 64
- },
- {
-  "op": "add",
-  "path": "/properties/RoleName/minLength",
-  "value": 1
+  "value": "^/([a-zA-Z0-9+=,.@\\-_]+/)*$"
  }
 ]

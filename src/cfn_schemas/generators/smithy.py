@@ -53,10 +53,12 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
         "/definitions/Projection/properties/NonKeyAttributes",
         "/definitions/ProvisionedThroughput/properties/ReadCapacityUnits",
         "/definitions/ProvisionedThroughput/properties/WriteCapacityUnits",
+        "/definitions/SSESpecification/properties/SSEType",
     ],
     "AWS::DynamoDB::GlobalTable": [
         "/definitions/KeySchema",
         "/definitions/LocalSecondaryIndex/properties/KeySchema",
+        "/definitions/SSESpecification/properties/SSEType",
     ],
     "AWS::EC2::Instance": ["/properties/InstanceType"],
     "AWS::EC2::LaunchTemplate": [
@@ -117,12 +119,17 @@ _PATH_EXCEPTIONS: dict[str, list[str]] = {
     "ecs": ["/definitions/LogConfiguration/properties/LogDriver"],
     "lambda": ["/properties/FunctionName"],
     "cloudwatch": ["/properties/AlarmActions", "/properties/OKActions", "/properties/InsufficientDataActions"],
+    "cloudwatch-events": ["/properties/Targets"],
     "connect": ["/properties/QueueConfigs"],
     "batch": ["/definitions/Ec2ConfigurationObject/properties/ImageIdOverride"],
     "securityhub": ["/definitions/MapFilter/properties/Value"],
     "rds": ["/properties/ReplicaMode"],
     "ec2": ["/properties/Domain", "/properties/Type"],
-    "iam": ["/properties/InstanceProfileName"],
+    "iam": [
+        "/properties/InstanceProfileName",
+        "/properties/AssumeRolePolicyDocument",
+        "/properties/Path",
+    ],
 }
 
 # Smithy service name → CF service name
