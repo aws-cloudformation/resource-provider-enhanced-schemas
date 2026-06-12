@@ -14,3 +14,6 @@ schemas/resources/
 schemas/providers/
 schemas/metadata/
 schemas/raw/
+schemas/patches/extensions/*/smithy.json
+schemas/patches/extensions/*/format.json
+schemas/patches/extensions/*/lifecycle.json
