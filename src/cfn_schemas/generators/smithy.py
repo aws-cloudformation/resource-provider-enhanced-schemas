@@ -106,7 +106,8 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
 
 _CASE_INSENSITIVE_PREFIXES = [
     "AWS::AmazonMQ::", "AWS::Batch::", "AWS::EC2::EIP", "AWS::EC2::IPAMPool",
-    "AWS::EC2::NetworkAcl", "AWS::EC2::SecurityGroup", "AWS::EC2::Volume",
+    "AWS::EC2::NetworkAcl", "AWS::EC2::SecurityGroup",
+    "AWS::EC2::TrafficMirrorFilterRule", "AWS::EC2::Volume",
     "AWS::ElastiCache::", "AWS::Route53Resolver::",
 ]
 

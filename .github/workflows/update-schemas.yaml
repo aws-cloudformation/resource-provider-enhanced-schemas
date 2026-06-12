@@ -33,6 +33,9 @@ jobs:
           cfn-schemas assemble --output build/cfnlint
           cfn-schemas assemble --standard --output build/standard
 
+      - name: Audit patches
+        run: cfn-schemas audit-patches > build/patch-audit-report.txt
+
       - name: Validate assembled schemas
         run: pytest tests/data/ -v --build-dir build/
 
@@ -45,6 +48,7 @@ jobs:
           cd ../standard
           zip -r ../../schemas-standard.zip .
           cd ../..
+          zip -r patches.zip schemas/patches/
 
           if ! gh release view latest &>/dev/null; then
             git tag -f latest
@@ -60,3 +64,5 @@ jobs:
 
           gh release upload latest schemas-cfn-lint.zip --clobber
           gh release upload latest schemas-standard.zip --clobber
+          gh release upload latest patches.zip --clobber
+          gh release upload latest build/patch-audit-report.txt --clobber
