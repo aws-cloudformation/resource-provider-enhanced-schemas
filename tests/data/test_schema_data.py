@@ -85,6 +85,40 @@ class TestStandardOutput:
         assert not failures, "Custom keywords found:\n" + "\n".join(failures[:20])
 
 
+class TestPatchConflicts:
+    def test_no_manual_smithy_value_conflicts(self, extensions_dir):
+        """Manual patches should not conflict with smithy on the same path."""
+        conflicts = []
+        for resource_dir in sorted(extensions_dir.iterdir()):
+            if not resource_dir.is_dir():
+                continue
+            manual_file = resource_dir / "manual.json"
+            smithy_file = resource_dir / "smithy.json"
+            if not manual_file.exists() or not smithy_file.exists():
+                continue
+            manual = json.loads(manual_file.read_text())
+            smithy = json.loads(smithy_file.read_text())
+            manual_by_path = {
+                p["path"]: p.get("value")
+                for p in manual if p.get("op") == "add"
+            }
+            smithy_by_path = {
+                p["path"]: p.get("value")
+                for p in smithy if p.get("op") == "add"
+            }
+            for path in set(manual_by_path) & set(smithy_by_path):
+                if manual_by_path[path] != smithy_by_path[path]:
+                    conflicts.append(
+                        f"{resource_dir.name}: {path} "
+                        f"(manual={manual_by_path[path]!r}, "
+                        f"smithy={smithy_by_path[path]!r})"
+                    )
+        assert not conflicts, (
+            f"{len(conflicts)} manual/smithy conflicts:\n"
+            + "\n".join(conflicts[:20])
+        )
+
+
 def _collect_refs(obj, path=""):
     """Collect all $ref values in a schema."""
     refs = []

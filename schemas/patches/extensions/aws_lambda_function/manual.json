@@ -6,11 +6,6 @@
  },
  {
   "op": "add",
-  "path": "/properties/Description/minLength",
-  "value": 1
- },
- {
-  "op": "add",
   "path": "/properties/FunctionName/pattern",
   "value": "^([a-zA-Z0-9_-]{1,64}|arn:[a-zA-Z0-9-]+:lambda:[a-zA-Z0-9-]+:\\d{12}:function:[a-zA-Z0-9_-]{1,64})$"
  },
@@ -18,11 +13,6 @@
   "op": "add",
   "path": "/properties/Handler/maxLength",
   "value": 128
- },
- {
-  "op": "add",
-  "path": "/properties/Handler/minLength",
-  "value": 1
  },
  {
   "op": "add",
@@ -38,11 +28,6 @@
   "op": "add",
   "path": "/properties/Layers/items/pattern",
   "value": "^(arn:[a-zA-Z0-9-]+:lambda:[a-zA-Z0-9-]+:\\d{12}:layer:[a-zA-Z0-9-_]+:[0-9]+|arn:[a-zA-Z0-9-]+:lambda:::awslayer:[a-zA-Z0-9-_]+)$"
- },
- {
-  "op": "add",
-  "path": "/properties/MemorySize/maximum",
-  "value": 10240
  },
  {
   "op": "add",
