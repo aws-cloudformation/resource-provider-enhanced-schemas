@@ -2,6 +2,9 @@
  "typeName": "AWS::CDK::Metadata",
  "description": "Metadata resource automatically added by the AWS CDK to track construct library versions used in the application.",
  "properties": {
+  "Id": {
+   "type": "string"
+  },
   "Analytics": {
    "type": "string"
   },
@@ -10,6 +13,9 @@
   }
  },
  "additionalProperties": false,
+ "readOnlyProperties": [
+  "/properties/Id"
+ ],
  "primaryIdentifier": [
   "/properties/Id"
  ]
