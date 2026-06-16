@@ -71,6 +71,7 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
         "/definitions/InstanceTypeSpecification/properties/InstanceType",
     ],
     "AWS::ElastiCache::ReplicationGroup": ["/properties/UserGroupIds"],
+    "AWS::Events::Rule": ["/properties/Targets"],
     "AWS::ElasticLoadBalancingV2::LoadBalancer": ["/properties/Tags"],
     "AWS::ElasticLoadBalancingV2::TargetGroup": ["/properties/Tags"],
     "AWS::GameLift::GameServerGroup": ["/definitions/InstanceType"],
