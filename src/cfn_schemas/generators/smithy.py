@@ -125,11 +125,7 @@ _PATH_EXCEPTIONS: dict[str, list[str]] = {
     "securityhub": ["/definitions/MapFilter/properties/Value"],
     "rds": ["/properties/ReplicaMode"],
     "ec2": ["/properties/Domain", "/properties/Type"],
-    "iam": [
-        "/properties/InstanceProfileName",
-        "/properties/AssumeRolePolicyDocument",
-        "/properties/Path",
-    ],
+    "iam": ["/properties/InstanceProfileName"],
 }
 
 # Smithy service name → CF service name
