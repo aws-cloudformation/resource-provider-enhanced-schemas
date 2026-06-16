@@ -116,15 +116,21 @@ class TestStandardOutput:
 
 
 class TestMetaSchemaValidation:
+    # SAM transform resources don't conform to the CFN provider meta-schema
+    # (no primaryIdentifier, non-boolean additionalProperties, dotted definition names)
+    _SKIP_PREFIXES = ("AWS::Serverless::",)
+
     def test_cfnlint_schemas_pass_meta_schema(self, cfnlint_dir):
         """Every assembled schema must conform to the CFN provider meta-schema."""
         validator = _build_meta_validator()
         failures = []
         for f in sorted((cfnlint_dir / "resources").glob("*.json")):
             data = json.loads(f.read_text())
+            tn = data.get("typeName", f.stem)
+            if any(tn.startswith(p) for p in self._SKIP_PREFIXES):
+                continue
             errors = list(validator.iter_errors(data))
             if errors:
-                tn = data.get("typeName", f.stem)
                 for e in errors:
                     failures.append(f"{tn}: {e.message}")
         assert not failures, (
@@ -148,6 +154,8 @@ class TestMetaSchemaValidation:
         for f in sorted((cfnlint_dir / "resources").glob("*.json")):
             data = json.loads(f.read_text())
             tn = data.get("typeName", f.stem)
+            if any(tn.startswith(p) for p in self._SKIP_PREFIXES):
+                continue
             for section in pointer_sections:
                 for pointer in data.get(section, []):
                     if _resolve_cfn_pointer(data, pointer) is None:
