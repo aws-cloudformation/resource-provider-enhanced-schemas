@@ -44,6 +44,7 @@ _SKIP_PROPERTY_NAMES = {"State"}
 _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::AmazonMQ::Broker": ["/properties/StorageType"],
     "AWS::CloudFormation::StackSet": ["/properties/ExecutionRoleName"],
+    "AWS::CloudFront::Distribution": ["/definitions/Cookies/properties/Forward"],
     "AWS::Bedrock::Guardrail": ["/definitions/SensitiveInformationPolicyConfig/properties/RegexesConfig"],
     "AWS::Connect::RoutingProfile": ["/properties/QueueConfigs"],
     "AWS::Connect::User": ["/definitions/DeskPhoneNumber"],
