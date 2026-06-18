@@ -127,6 +127,8 @@ _ARN_PREFIX_EXCLUSIONS: dict[str, list[str]] = {
 
 _CERT_EXCLUSIONS = {
     "AWS::EC2::CustomerGateway",
+    "AWS::ElasticLoadBalancingV2::Listener",
+    "AWS::ElasticLoadBalancingV2::ListenerCertificate",
     "AWS::EMRContainers::Endpoint",
     "AWS::MediaPackage::OriginEndpoint",
     "AWS::MediaPackageV2::OriginEndpoint",
