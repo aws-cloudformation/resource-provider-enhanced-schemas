@@ -36,11 +36,6 @@
  },
  {
   "op": "add",
-  "path": "/properties/Timeout/maximum",
-  "value": 900
- },
- {
-  "op": "add",
   "path": "/properties/Timeout/minimum",
   "value": 1
  }
