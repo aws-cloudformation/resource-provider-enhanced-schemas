@@ -15,6 +15,7 @@ from copy import deepcopy
 from typing import Any
 from urllib.request import urlopen
 
+from cfn_schemas.assembly import apply_patches
 from cfn_schemas.generators import register
 from cfn_schemas.generators.base import BaseGenerator
 
@@ -344,8 +345,6 @@ class SamGenerator(BaseGenerator):
 
         # Apply all patches (providers + extensions) so we get format,
         # smithy, and other enhancements that other generators produced.
-        from cfn_schemas.assembly import apply_patches
-
         dir_name = cfn_type.replace("::", "_").lower()
         for patch_subdir in ("providers", "extensions"):
             patch_dir = self.schemas_dir / "patches" / patch_subdir / dir_name
