@@ -220,7 +220,7 @@ class SamGenerator(BaseGenerator):
         return schema
 
     def _copy_readonly_props(self, schema: dict, cfn_type: str) -> None:
-        """Copy readOnlyProperties from the underlying CFN resource type."""
+        """Copy readOnlyProperties and their schemas from the underlying CFN type."""
         us_east = self.providers_dir / "us-east-1.json"
         if not us_east.exists():
             return
@@ -232,9 +232,24 @@ class SamGenerator(BaseGenerator):
         if not cfn_file.exists():
             return
         cfn_schema = json.loads(cfn_file.read_text())
+        pi = cfn_schema.get("primaryIdentifier", [])
+        if pi:
+            schema["primaryIdentifier"] = pi
         ro_props = cfn_schema.get("readOnlyProperties", [])
         if ro_props:
             schema["readOnlyProperties"] = ro_props
+            cfn_props = cfn_schema.get("properties", {})
+            cfn_defs = cfn_schema.get("definitions", {})
+            for ro_prop in ro_props:
+                parts = ro_prop.strip("/").split("/")
+                if len(parts) >= 2 and parts[0] == "properties":
+                    prop_name = parts[1]
+                    if prop_name not in schema["properties"]:
+                        if prop_name in cfn_props:
+                            prop_val = _inline_refs(
+                                deepcopy(cfn_props[prop_name]), cfn_defs,
+                            )
+                            schema["properties"][prop_name] = prop_val
 
     def _resolve_passthroughs(
         self, schema: dict, all_defs: dict, type_name: str, module_name: str
