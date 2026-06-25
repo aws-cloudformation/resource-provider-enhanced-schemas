@@ -15,6 +15,7 @@ from copy import deepcopy
 from typing import Any
 from urllib.request import urlopen
 
+from cfn_schemas.assembly import apply_patches
 from cfn_schemas.generators import register
 from cfn_schemas.generators.base import BaseGenerator
 
@@ -124,10 +125,16 @@ def _rewrite_refs(obj: Any) -> Any:
 def _inline_refs(obj: Any, defs: dict, depth: int = 3) -> Any:
     if depth <= 0 or not isinstance(obj, dict):
         return obj
-    if "$ref" in obj and len(obj) == 1:
+    if "$ref" in obj:
         ref_name = obj["$ref"].replace("#/definitions/", "")
         if ref_name in defs:
-            return _inline_refs(deepcopy(defs[ref_name]), defs, depth - 1)
+            resolved = _inline_refs(deepcopy(defs[ref_name]), defs, depth - 1)
+            if isinstance(resolved, dict):
+                # Merge sibling keys (e.g. description) into resolved def
+                for k, v in obj.items():
+                    if k != "$ref" and k not in resolved:
+                        resolved[k] = v
+            return resolved
         return obj
     return {k: _inline_refs(v, defs, depth) for k, v in obj.items()}
 
@@ -323,7 +330,7 @@ class SamGenerator(BaseGenerator):
                 break
 
     def _lookup_cfn_prop(self, cfn_type: str, cfn_prop: str) -> dict | None:
-        """Look up a property from a CF resource schema."""
+        """Look up a property from a fully-patched CF resource schema."""
         us_east = self.providers_dir / "us-east-1.json"
         if not us_east.exists():
             return None
@@ -335,6 +342,17 @@ class SamGenerator(BaseGenerator):
         if not cfn_file.exists():
             return None
         cfn_schema = json.loads(cfn_file.read_text())
+
+        # Apply all patches (providers + extensions) so we get format,
+        # smithy, and other enhancements that other generators produced.
+        dir_name = cfn_type.replace("::", "_").lower()
+        for patch_subdir in ("providers", "extensions"):
+            patch_dir = self.schemas_dir / "patches" / patch_subdir / dir_name
+            if patch_dir.exists():
+                for patch_file in sorted(patch_dir.glob("*.json")):
+                    patches = json.loads(patch_file.read_text())
+                    cfn_schema = apply_patches(cfn_schema, patches)
+
         prop = cfn_schema.get("properties", {}).get(cfn_prop)
         if not prop:
             return None
