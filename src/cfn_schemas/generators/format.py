@@ -85,6 +85,14 @@ _SIMPLE_MAPPINGS: list[tuple[list[str], str, set[str]]] = [
     (["SubnetId"], "AWS::EC2::Subnet.Id", set()),
     (["LogGroupName"], "AWS::Logs::LogGroup.Name", set()),
     (["ImageId", "AmiId"], "AWS::EC2::Image.Id", {"AWS::Cloud9::EnvironmentEC2"}),
+    (
+        [
+            "CanonicalHostedZoneID", "CanonicalHostedZoneNameID",
+            "RegionalHostedZoneId", "DistributionHostedZoneId",
+        ],
+        "AWS::Route53::AliasTarget.HostedZoneId",
+        set(),
+    ),
 ]
 
 # Property name → format for ARN-style properties with exclusions
@@ -258,7 +266,59 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
             "/properties/Id/format", "AWS::ACM::Certificate.Arn",
         ),
     ],
+    "AWS::Route53::HostedZone": [
+        _fmt("/properties/Id/format", "AWS::Route53::HostedZone.Id"),
+    ],
+    "AWS::AppSync::DomainName": [
+        _fmt(
+            "/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
+    "AWS::RDS::DBInstance": [
+        _fmt(
+            "/definitions/Endpoint/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
+    "AWS::ServiceDiscovery::PrivateDnsNamespace": [
+        _fmt(
+            "/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
+    "AWS::ServiceDiscovery::PublicDnsNamespace": [
+        _fmt(
+            "/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
+    "AWS::VpcLattice::Service": [
+        _fmt(
+            "/definitions/DnsEntry/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
+    "AWS::VpcLattice::ServiceNetworkServiceAssociation": [
+        _fmt(
+            "/definitions/DnsEntry/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
+    "AWS::Route53::RecordSet": [
+        _fmt(
+            "/definitions/AliasTarget/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
+    "AWS::Route53::RecordSetGroup": [
+        _fmt(
+            "/definitions/AliasTarget/properties/HostedZoneId/format",
+            "AWS::Route53::AliasTarget.HostedZoneId",
+        ),
+    ],
 }
+
 
 
 def _is_excluded(resource_type: str, fmt: str, exclusions: set[str]) -> bool:
@@ -469,6 +529,7 @@ class FormatGenerator(BaseGenerator):
                     resource_patches.extend(
                         _make_sg_name_patches(resource_type, "#/" + "/".join(path), resolver)
                     )
+
 
             # Write patches
             if resource_patches:
