@@ -41,7 +41,7 @@ _ISO_REGIONS = [
     "us-isof-east-1", "us-isof-south-1", "eu-isoe-west-1", "eusc-de-east-1",
 ]
 
-_SKIP_REGIONS = {"me-south-1"}
+_SKIP_REGIONS = {}
 
 
 def _schema_url(region: str) -> str:
