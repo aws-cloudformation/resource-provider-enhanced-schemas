@@ -1,0 +1,26 @@
+[
+ {
+  "op": "test",
+  "path": "/readOnlyProperties",
+  "value": [
+   "/properties/KmsConfiguration.KeyType",
+   "/properties/LastModifiedDate",
+   "/properties/KmsConfiguration.KmsKeyArn",
+   "/properties/KmsConfiguration",
+   "/properties/Arn",
+   "/properties/TokenVaultId"
+  ]
+ },
+ {
+  "op": "replace",
+  "path": "/readOnlyProperties",
+  "value": [
+   "/properties/KmsConfiguration/KeyType",
+   "/properties/LastModifiedDate",
+   "/properties/KmsConfiguration/KmsKeyArn",
+   "/properties/KmsConfiguration",
+   "/properties/Arn",
+   "/properties/TokenVaultId"
+  ]
+ }
+]
