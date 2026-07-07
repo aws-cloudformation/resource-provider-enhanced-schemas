@@ -47,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd build/cfnlint
-          zip -r ../../schemas-cfn-lint.zip resources/ providers/
+          zip -r ../../schemas-cfn-lint.zip resources/ providers/ version.json
           cd ../standard
           zip -r ../../schemas-standard.zip .
           cd ../..
