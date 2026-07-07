@@ -52,6 +52,7 @@ jobs:
           zip -r ../../schemas-standard.zip .
           cd ../..
           zip -r patches.zip schemas/patches/
+          echo "{\"schema_date\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\"}" > version.json
 
           if ! gh release view latest &>/dev/null; then
             git tag -f latest
@@ -69,4 +70,4 @@ jobs:
           gh release upload latest schemas-standard.zip --clobber
           gh release upload latest patches.zip --clobber
           gh release upload latest build/patch-audit-report.txt --clobber
-          gh release upload latest build/cfnlint/version.json --clobber
+          gh release upload latest version.json --clobber
