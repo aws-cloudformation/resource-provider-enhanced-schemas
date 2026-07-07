@@ -10,7 +10,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -196,16 +195,6 @@ def _assemble_resource(
     return assemble_schema(base, patch_files)
 
 
-def _write_version(output_dir: Path) -> None:
-    """Write version.json with the current UTC timestamp."""
-    version = {
-        "schema_date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    }
-    (output_dir / "version.json").write_text(
-        json.dumps(version, indent=1) + "\n"
-    )
-
-
 def assemble_all(
     schemas_dir: Path, output_dir: Path, standard: bool = False
 ) -> int:
@@ -221,18 +210,12 @@ def assemble_all(
     resources_dir = schemas_dir / "resources"
 
     if standard:
-        rc = _assemble_standard(
+        return _assemble_standard(
             providers_dir, resources_dir, schemas_dir, output_dir,
         )
-    else:
-        rc = _assemble_cfnlint(
-            providers_dir, resources_dir, schemas_dir, output_dir,
-        )
-
-    if rc == 0:
-        _write_version(output_dir)
-
-    return rc
+    return _assemble_cfnlint(
+        providers_dir, resources_dir, schemas_dir, output_dir,
+    )
 
 
 def _assemble_cfnlint(
