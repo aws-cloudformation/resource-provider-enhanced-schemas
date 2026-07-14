@@ -1,0 +1,22 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/ResponseHeadersPolicyConfig/properties/Comment/maxLength",
+  "value": 128
+ },
+ {
+  "op": "add",
+  "path": "/definitions/AccessControlAllowHeaders/properties/Items/minItems",
+  "value": 1
+ },
+ {
+  "op": "add",
+  "path": "/definitions/AccessControlAllowMethods/properties/Items/minItems",
+  "value": 1
+ },
+ {
+  "op": "add",
+  "path": "/definitions/AccessControlAllowOrigins/properties/Items/minItems",
+  "value": 1
+ }
+]
