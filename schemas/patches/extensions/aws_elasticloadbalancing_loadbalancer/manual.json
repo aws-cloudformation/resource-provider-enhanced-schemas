@@ -8,5 +8,15 @@
    "tcp",
    "ssl"
   ]
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Listeners/properties/InstanceProtocol/enumCaseInsensitive",
+  "value": [
+   "http",
+   "https",
+   "tcp",
+   "ssl"
+  ]
  }
 ]
