@@ -40,7 +40,7 @@ Source = "https://github.com/aws-cloudformation/resource-provider-enhanced-schem
 [tool.ruff]
 line-length = 100
 lint.select = ["E", "F", "I", "UP", "PL"]
-lint.ignore = ["PLR0915", "PLR2004", "PLR0912", "PLR0913", "PLW2901"]
+lint.ignore = ["PLR0915", "PLR0917", "PLR2004", "PLR0912", "PLR0913", "PLW2901"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/cfn_schemas/generators/__init__.py" = ["PLC0415"]
