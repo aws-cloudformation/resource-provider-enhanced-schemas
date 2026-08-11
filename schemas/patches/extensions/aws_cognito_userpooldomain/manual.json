@@ -1,0 +1,22 @@
+[
+ {
+  "op": "add",
+  "path": "/anyOf",
+  "value": [
+   {
+    "required": [
+     "CustomDomainConfig"
+    ]
+   },
+   {
+    "properties": {
+     "Domain": {
+      "maxLength": 63,
+      "minLength": 1,
+      "pattern": "^[a-z0-9](?:[a-z0-9\\-]{0,61}[a-z0-9])?$"
+     }
+    }
+   }
+  ]
+ }
+]
