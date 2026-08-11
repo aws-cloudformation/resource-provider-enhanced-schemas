@@ -48,7 +48,6 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::Bedrock::Guardrail": ["/definitions/SensitiveInformationPolicyConfig/properties/RegexesConfig"],
     "AWS::Connect::RoutingProfile": ["/properties/QueueConfigs"],
     "AWS::Connect::User": ["/definitions/DeskPhoneNumber"],
-    # The Smithy pattern only describes prefix domains; custom domains are FQDNs.
     "AWS::Cognito::UserPoolDomain": ["/properties/Domain"],
     "AWS::DynamoDB::Table": [
         "/definitions/KeySchema",
