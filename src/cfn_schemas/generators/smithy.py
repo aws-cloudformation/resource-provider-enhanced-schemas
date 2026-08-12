@@ -48,6 +48,7 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::Bedrock::Guardrail": ["/definitions/SensitiveInformationPolicyConfig/properties/RegexesConfig"],
     "AWS::Connect::RoutingProfile": ["/properties/QueueConfigs"],
     "AWS::Connect::User": ["/definitions/DeskPhoneNumber"],
+    "AWS::Cognito::UserPoolDomain": ["/properties/Domain"],
     "AWS::DynamoDB::Table": [
         "/definitions/KeySchema",
         "/definitions/LocalSecondaryIndex/properties/KeySchema",
@@ -139,8 +140,8 @@ _SERVICE_RENAMES: dict[str, str] = {
     "directory-service": "directoryservice", "api-gateway": "apigateway",
     "auto-scaling": "autoscaling", "auto-scaling-plans": "autoscalingplans",
     "config-service": "config", "cost-explorer": "costexplorer",
-    "cognito-identity-provider": "cognitoidentityprovider",
-    "cognito-identity": "cognitoidentity",
+    "cognito-identity-provider": "cognito",
+    "cognito-identity": "cognito",
     "application-auto-scaling": "applicationautoscaling",
     "cloudwatch-events": "events", "cloudwatch-logs": "logs",
     "database-migration-service": "databasemigrationservice",
