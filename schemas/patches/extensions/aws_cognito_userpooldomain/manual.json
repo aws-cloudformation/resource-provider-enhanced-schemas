@@ -11,33 +11,38 @@
  },
  {
   "op": "add",
-  "path": "/if",
-  "value": {
-   "required": [
-    "CustomDomainConfig"
-   ]
-  }
- },
- {
-  "op": "add",
-  "path": "/then",
-  "value": {
-   "properties": {
-    "Domain": {
-     "pattern": "^[a-z0-9](?:[a-z0-9\\-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9\\-]*[a-z0-9])?)+$"
+  "path": "/allOf",
+  "value": [
+   {
+    "if": {
+     "required": [
+      "CustomDomainConfig"
+     ]
+    },
+    "then": {
+     "properties": {
+      "Domain": {
+       "pattern": "^[a-z0-9](?:[a-z0-9\\-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9\\-]*[a-z0-9])?)+$"
+      }
+     }
+    }
+   },
+   {
+    "if": {
+     "not": {
+      "required": [
+       "CustomDomainConfig"
+      ]
+     }
+    },
+    "then": {
+     "properties": {
+      "Domain": {
+       "pattern": "^[a-z0-9](?:[a-z0-9\\-]{0,61}[a-z0-9])?$"
+      }
+     }
     }
    }
-  }
- },
- {
-  "op": "add",
-  "path": "/else",
-  "value": {
-   "properties": {
-    "Domain": {
-     "pattern": "^[a-z0-9](?:[a-z0-9\\-]{0,61}[a-z0-9])?$"
-    }
-   }
-  }
+  ]
  }
 ]
