@@ -176,6 +176,45 @@ class TestLifecycleGenerator:
         assert _match_types(["AWS::S3::Bucket"], "AWS::EC2") == []
 
 
+class TestFormatGenerator:
+    def test_variants_merge_not_clobber(self, tmp_path):
+        """Multiple content-hashed schemas of one type must not clobber each
+        other's format patches (issue #4642)."""
+        from cfn_schemas.generators.format import FormatGenerator
+
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        # Richer variant (most regions): CertificateArn is a real property.
+        (resources / "0_modern.json").write_text(
+            json.dumps(
+                {
+                    "typeName": "AWS::CertificateManager::Certificate",
+                    "primaryIdentifier": ["/properties/CertificateArn"],
+                    "properties": {"CertificateArn": {"type": "string"}},
+                }
+            )
+        )
+        # Leaner variant (gov/cn/opt-in regions): no CertificateArn property.
+        # Sorted-glob order puts this one last, so pre-fix it would win.
+        (resources / "1_legacy.json").write_text(
+            json.dumps(
+                {
+                    "typeName": "AWS::CertificateManager::Certificate",
+                    "primaryIdentifier": ["/properties/Id"],
+                    "properties": {"Id": {"type": "string"}},
+                }
+            )
+        )
+
+        FormatGenerator(schemas_dir=tmp_path).run()
+
+        out = tmp_path / "patches" / "extensions" / (
+            "aws_certificatemanager_certificate"
+        ) / "format.json"
+        paths = {p["path"] for p in json.loads(out.read_text())}
+        assert "/properties/CertificateArn/format" in paths
+
+
 class TestManualGenerator:
     def test_validates_good_patches(self, tmp_path):
         _make_generator(tmp_path)
