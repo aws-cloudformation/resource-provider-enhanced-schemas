@@ -45,5 +45,20 @@
   "value": [
    "KMS"
   ]
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ProvisionedThroughput/properties/ReadCapacityUnits/minimum",
+  "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ProvisionedThroughput/properties/WriteCapacityUnits/minimum",
+  "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Projection/properties/NonKeyAttributes/minItems",
+  "value": 0
  }
 ]

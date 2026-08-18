@@ -330,5 +330,14 @@
     "SslSupportMethod"
    ]
   }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Cookies/properties/Forward/enumCaseInsensitive",
+  "value": [
+   "all",
+   "none",
+   "whitelist"
+  ]
  }
 ]

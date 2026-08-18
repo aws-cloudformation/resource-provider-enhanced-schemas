@@ -54,6 +54,6 @@
  {
   "op": "add",
   "path": "/properties/BackupRetentionPeriod/maximum",
-  "value": 35
+  "value": 180
  }
 ]

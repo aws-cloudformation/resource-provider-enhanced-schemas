@@ -1,0 +1,7 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/AutoRollbackConfig/properties/Alarms/minItems",
+  "value": 0
+ }
+]

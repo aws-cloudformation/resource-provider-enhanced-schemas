@@ -1,0 +1,12 @@
+[
+ {
+  "op": "add",
+  "path": "/properties/FunctionVersion/minLength",
+  "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/properties/FunctionVersion/pattern",
+  "value": "^(\\$LATEST(\\.PUBLISHED)?|[0-9]*)$"
+ }
+]

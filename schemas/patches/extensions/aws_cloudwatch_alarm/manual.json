@@ -79,5 +79,10 @@
    "missing",
    "notBreaching"
   ]
+ },
+ {
+  "op": "add",
+  "path": "/properties/AlarmName/minLength",
+  "value": 0
  }
 ]

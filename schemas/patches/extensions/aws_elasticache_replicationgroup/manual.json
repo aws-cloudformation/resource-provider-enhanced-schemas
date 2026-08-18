@@ -18,5 +18,10 @@
   "op": "add",
   "path": "/properties/ReplicasPerNodeGroup/minimum",
   "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/properties/UserGroupIds/minItems",
+  "value": 0
  }
 ]

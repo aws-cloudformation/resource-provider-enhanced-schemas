@@ -1,0 +1,11 @@
+[
+ {
+  "op": "add",
+  "path": "/properties/CapacityType/enumCaseInsensitive",
+  "value": [
+   "capacity_block",
+   "on_demand",
+   "spot"
+  ]
+ }
+]

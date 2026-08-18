@@ -22,7 +22,7 @@
  {
   "op": "add",
   "path": "/properties/Roles/minItems",
-  "value": 1
+  "value": 0
  },
  {
   "op": "add",
