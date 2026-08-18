@@ -400,8 +400,12 @@ class FormatGenerator(BaseGenerator):
 
     def run(self) -> None:
         patches_dir = self.patches_dir
-        count = 0
-        written: set[Path] = set()
+        # A single resource type can resolve to multiple content-hashed schema
+        # files (regional/partition variants differ in properties). They all
+        # map to one per-type patch file, so accumulate every variant's patches
+        # and merge them at the end instead of letting the last-processed
+        # variant overwrite the others (see issue #4642).
+        patches_by_output: dict[Path, list[dict[str, Any]]] = {}
 
         for schema_file in sorted(self.resources_dir.glob("*.json")):
             schema = json.loads(schema_file.read_text())
@@ -531,22 +535,33 @@ class FormatGenerator(BaseGenerator):
                     )
 
 
-            # Write patches
+            # Accumulate patches per output file. Merging across variants
+            # happens after the loop so no variant clobbers another.
             if resource_patches:
-                # Deduplicate by path
-                seen: set[str] = set()
-                deduped: list[dict[str, Any]] = []
-                for p in resource_patches:
-                    key = p["path"]
-                    if key not in seen:
-                        seen.add(key)
-                        deduped.append(p)
-
                 dir_name = self.resource_type_to_dir(resource_type)
                 output_file = patches_dir / dir_name / "format.json"
-                self.write_json(output_file, sorted(deduped, key=lambda x: x["path"]))
-                written.add(output_file)
-                count += 1
+                patches_by_output.setdefault(output_file, []).extend(resource_patches)
+
+        # Merge accumulated patches per output file (union, dedup by path,
+        # first occurrence wins in sorted-glob order) and write once.
+        written: set[Path] = set()
+        count = 0
+        for output_file, patches in patches_by_output.items():
+            seen: dict[str, Any] = {}
+            deduped: list[dict[str, Any]] = []
+            for p in patches:
+                key = p["path"]
+                if key not in seen:
+                    seen[key] = p["value"]
+                    deduped.append(p)
+                elif seen[key] != p["value"]:
+                    logger.warning(
+                        "Conflicting format patch for %s at %s: %r vs %r (keeping first)",
+                        output_file.parent.name, key, seen[key], p["value"],
+                    )
+            self.write_json(output_file, sorted(deduped, key=lambda x: x["path"]))
+            written.add(output_file)
+            count += 1
 
         # Clean up stale format.json files
         for existing in patches_dir.glob("*/format.json"):
