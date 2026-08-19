@@ -20,6 +20,6 @@
  {
   "op": "add",
   "path": "/properties/HealthCheckType/pattern",
-  "value": "^(EBS|EC2|ELB|VPC_LATTICE)(,(EBS|EC2|ELB|VPC_LATTICE))*$"
+  "value": "^(EBS|EC2|ELB|VPC_LATTICE)(,(EBS|EC2|ELB|VPC_LATTICE))*,?$"
  }
 ]

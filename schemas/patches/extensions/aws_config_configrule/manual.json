@@ -7,6 +7,6 @@
  {
   "op": "add",
   "path": "/properties/Description/minLength",
-  "value": 1
+  "value": 0
  }
 ]

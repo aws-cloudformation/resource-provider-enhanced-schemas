@@ -3,5 +3,12 @@
   "op": "add",
   "path": "/definitions/BackupSelectionResourceType/properties/SelectionName/pattern",
   "value": "^[a-zA-Z0-9\\-\\_\\.\\:]+$"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ConditionResourceType/properties/ConditionType/enumCaseInsensitive",
+  "value": [
+   "stringequals"
+  ]
  }
 ]

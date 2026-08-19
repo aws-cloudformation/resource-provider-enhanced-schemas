@@ -184,6 +184,40 @@ def _extract_constraints(shape: dict) -> dict[str, Any]:
     return result
 
 
+def _collect_manual_paths(manual_file: Path) -> set[str]:
+    """Return the set of JSON-pointer paths a hand-authored manual.json governs.
+
+    Manual patches are the source of truth. The Smithy generator must never
+    emit a patch for a path a manual patch already touches, otherwise the
+    regenerated (gitignored) smithy.json would clobber the hand-authored
+    override on assembly (patch order is manual < smithy).
+    """
+    if not manual_file.exists():
+        return set()
+    try:
+        patches = json.loads(manual_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return set()
+    if not isinstance(patches, list):
+        return set()
+    return {
+        p["path"] for p in patches
+        if isinstance(p, dict) and isinstance(p.get("path"), str)
+    }
+
+
+def _enum_governed(path: str, manual_paths: set[str]) -> bool:
+    """True if a manual patch sets enum or enumCaseInsensitive on this node.
+
+    The two keywords are alternatives for the same constraint, so a manual
+    enumCaseInsensitive must suppress a generated enum (and vice versa).
+    """
+    return (
+        f"{path}/enum" in manual_paths
+        or f"{path}/enumCaseInsensitive" in manual_paths
+    )
+
+
 def _get_create_operations(schema: dict) -> list[str]:
     prefixes = ("Put", "Add", "Create", "Publish", "Register", "Allocate", "Start", "Run")
     ops = []
@@ -330,6 +364,11 @@ class SmithyGenerator(BaseGenerator):
             resolver = RefResolver.from_schema(
                 json.loads((schema_dir / f"{rt_lower}.json").read_text())
             )
+            dir_name = self.resource_type_to_dir(rt)
+            # Manual patches are the source of truth: defer to any path they
+            # govern so the regenerated smithy.json cannot clobber a
+            # hand-authored override on assembly (patch order manual < smithy).
+            manual_paths = _collect_manual_paths(patches_dir / dir_name / "manual.json")
             output: list[dict[str, Any]] = []
             for path, patch in resource_patches.items():
                 _, schema_data = resolver.resolve(f"#{path}")
@@ -347,6 +386,8 @@ class SmithyGenerator(BaseGenerator):
                 # Enums
                 enum_values = _extract_enum(shape)
                 if enum_values:
+                    if _enum_governed(path, manual_paths):
+                        continue
                     if any(f in schema_data for f in ("enum", "pattern", "properties", "items")):
                         if is_ci and "enum" in schema_data:
                             output.append({"op": "remove", "path": f"{path}/enum"})
@@ -367,6 +408,8 @@ class SmithyGenerator(BaseGenerator):
                     if service_name in _PATH_EXCEPTIONS and path in _PATH_EXCEPTIONS[service_name]:
                         continue
                     if field == "pattern":
+                        if f"{path}/pattern" in manual_paths:
+                            continue
                         if any(f in schema_data for f in ("enum", "pattern", "properties", "items")):
                             continue
                         if value in (".*", "^.*$"):
@@ -385,13 +428,14 @@ class SmithyGenerator(BaseGenerator):
                             jf = "maximum" if field == "max" else "minimum"
                         else:
                             continue
+                        if f"{path}/{jf}" in manual_paths:
+                            continue
                         if jf in schema_data:
                             continue
                         if "pattern" in schema_data and re.match(r"^.*\{[0-9]+,[0-9]+\}\$?$", schema_data["pattern"]):
                             continue
                         output.append({"op": "add", "path": f"{path}/{jf}", "value": value})
 
-            dir_name = self.resource_type_to_dir(rt)
             output_file = patches_dir / dir_name / "smithy.json"
             if output:
                 self.write_json(output_file, output)

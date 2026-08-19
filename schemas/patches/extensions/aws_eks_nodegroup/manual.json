@@ -1,0 +1,12 @@
+[
+ {
+  "op": "add",
+  "path": "/properties/CapacityType/enum",
+  "value": [
+   "CAPACITY_BLOCK",
+   "ON_DEMAND",
+   "OnDemand",
+   "SPOT"
+  ]
+ }
+]

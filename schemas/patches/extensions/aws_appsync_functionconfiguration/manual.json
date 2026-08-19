@@ -1,0 +1,12 @@
+[
+ {
+  "op": "add",
+  "path": "/properties/RequestMappingTemplate/minLength",
+  "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/properties/ResponseMappingTemplate/minLength",
+  "value": 0
+ }
+]

@@ -1,0 +1,7 @@
+[
+ {
+  "op": "add",
+  "path": "/properties/UserNames/minItems",
+  "value": 0
+ }
+]
