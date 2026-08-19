@@ -1,11 +1,12 @@
 [
  {
   "op": "add",
-  "path": "/properties/CapacityType/enumCaseInsensitive",
+  "path": "/properties/CapacityType/enum",
   "value": [
-   "capacity_block",
-   "on_demand",
-   "spot"
+   "CAPACITY_BLOCK",
+   "ON_DEMAND",
+   "OnDemand",
+   "SPOT"
   ]
  }
 ]
