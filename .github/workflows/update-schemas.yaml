@@ -52,7 +52,7 @@ jobs:
           zip -r ../../schemas-standard.zip .
           cd ../..
           zip -r patches.zip schemas/patches/
-          echo "{\"schema_date\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\"}" > version.json
+          echo "{\n \"schema_date\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\"\n}" > version.json
 
           if ! gh release view latest &>/dev/null; then
             git tag -f latest
