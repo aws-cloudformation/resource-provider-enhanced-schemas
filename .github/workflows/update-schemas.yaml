@@ -52,7 +52,19 @@ jobs:
           zip -r ../../schemas-standard.zip .
           cd ../..
           zip -r patches.zip schemas/patches/
-          echo "{\n \"schema_date\": \"$(date -u +'%Y-%m-%dT%H:%M:%SZ')\"\n}" > version.json
+          SCHEMA_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          content = json.dumps(
+              {"schema_date": os.environ["SCHEMA_DATE"]},
+              indent=1,
+              sort_keys=True,
+              separators=(",", ": "),
+          )
+          Path("version.json").write_text(f"{content}\n", encoding="utf-8")
+          PY
 
           if ! gh release view latest &>/dev/null; then
             git tag -f latest
