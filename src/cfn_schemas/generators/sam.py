@@ -31,13 +31,17 @@ SAM_DEF_PREFIX = "samtranslator__internal__schema_source__"
 SAM_TYPE_MAP = {
     "aws_serverless_api": "AWS::Serverless::Api",
     "aws_serverless_application": "AWS::Serverless::Application",
+    "aws_serverless_capacity_provider": "AWS::Serverless::CapacityProvider",
     "aws_serverless_connector": "AWS::Serverless::Connector",
     "aws_serverless_function": "AWS::Serverless::Function",
     "aws_serverless_graphqlapi": "AWS::Serverless::GraphQLApi",
     "aws_serverless_httpapi": "AWS::Serverless::HttpApi",
     "aws_serverless_layerversion": "AWS::Serverless::LayerVersion",
+    "aws_serverless_microvmimage": "AWS::Serverless::MicrovmImage",
+    "aws_serverless_networkconnector": "AWS::Serverless::NetworkConnector",
     "aws_serverless_simpletable": "AWS::Serverless::SimpleTable",
     "aws_serverless_statemachine": "AWS::Serverless::StateMachine",
+    "aws_serverless_websocketapi": "AWS::Serverless::WebSocketApi",
 }
 
 SAM_TO_CFN_TYPE: dict[str, str] = {
