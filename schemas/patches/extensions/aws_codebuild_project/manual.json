@@ -12,7 +12,7 @@
  {
   "op": "add",
   "path": "/properties/TimeoutInMinutes/maximum",
-  "value": 480
+  "value": 2160
  },
  {
   "op": "add",
