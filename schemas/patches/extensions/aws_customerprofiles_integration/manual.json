@@ -1,0 +1,12 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/ScheduledTriggerProperties/properties/ScheduleExpression/enumCaseInsensitive",
+  "value": [
+   "rate(5minutes)",
+   "rate(15minutes)",
+   "rate(1hours)",
+   "rate(1days)"
+  ]
+ }
+]
