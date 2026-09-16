@@ -245,6 +245,9 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
     "AWS::Lambda::Function": [
         _fmt("/properties/Arn/format", "AWS::Lambda::Function.Arn"),
     ],
+    "AWS::Serverless::Function": [
+        _fmt("/properties/Arn/format", "AWS::Lambda::Function.Arn"),
+    ],
     "AWS::KMS::Key": [
         _fmt("/properties/Arn/format", "AWS::KMS::Key.Arn"),
         _fmt("/properties/KeyId/format", "AWS::KMS::Key.Id"),
