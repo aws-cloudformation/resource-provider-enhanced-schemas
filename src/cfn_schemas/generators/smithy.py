@@ -43,6 +43,13 @@ _SKIP_RESOURCE_TYPES = {"AWS::CloudFormation::Stack"}
 _SKIP_PROPERTY_NAMES = {"State"}
 _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::AmazonMQ::Broker": ["/properties/StorageType"],
+    # Smithy @length(min:1) is wrong here: CloudFormation accepts an empty list.
+    "AWS::Backup::Framework": [
+        "/definitions/FrameworkControl/properties/ControlScope/properties/ComplianceResourceIds",
+    ],
+    # Smithy @length(max:63) only covers the taint key name segment; EKS also
+    # allows a DNS-subdomain prefix (<=253), so the real max is 253+1+63=317.
+    "AWS::EKS::Nodegroup": ["/definitions/Taint/properties/Key"],
     "AWS::CloudFormation::StackSet": ["/properties/ExecutionRoleName"],
     "AWS::CloudFront::Distribution": ["/definitions/Cookies/properties/Forward"],
     "AWS::Bedrock::Guardrail": ["/definitions/SensitiveInformationPolicyConfig/properties/RegexesConfig"],
@@ -60,6 +67,7 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::DynamoDB::GlobalTable": [
         "/definitions/KeySchema",
         "/definitions/LocalSecondaryIndex/properties/KeySchema",
+        "/definitions/Projection/properties/NonKeyAttributes",
         "/definitions/SSESpecification/properties/SSEType",
     ],
     "AWS::EC2::Instance": ["/properties/InstanceType"],
@@ -129,6 +137,9 @@ _PATH_EXCEPTIONS: dict[str, list[str]] = {
     "rds": ["/properties/ReplicaMode"],
     "ec2": ["/properties/Domain", "/properties/Type"],
     "iam": ["/properties/InstanceProfileName"],
+    # Forwarded-header allow-lists are open-ended (customers pass Sec-WebSocket-*,
+    # X-Forwarded-Host, etc.); the Smithy enum is not exhaustive.
+    "lightsail": ["/definitions/HeaderObject/properties/HeadersAllowList/items"],
 }
 
 # Smithy service name → CF service name

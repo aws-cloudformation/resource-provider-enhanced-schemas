@@ -1,0 +1,7 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/FrameworkControl/properties/ControlScope/properties/ComplianceResourceIds/maxItems",
+  "value": 100
+ }
+]
