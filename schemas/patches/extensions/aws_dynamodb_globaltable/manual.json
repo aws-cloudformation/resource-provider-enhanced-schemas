@@ -28,7 +28,6 @@
   "op": "add",
   "path": "/definitions/SSESpecification/properties/SSEType/enum",
   "value": [
-   "AES256",
    "KMS"
   ]
  }
