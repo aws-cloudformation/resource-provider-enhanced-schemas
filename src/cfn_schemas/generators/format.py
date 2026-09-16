@@ -245,10 +245,6 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
     "AWS::Lambda::Function": [
         _fmt("/properties/Arn/format", "AWS::Lambda::Function.Arn"),
     ],
-    # SAM transforms AWS::Serverless::Function into an AWS::Lambda::Function,
-    # so its Arn attribute is a Lambda function ARN. Tag it so GetAtt format
-    # checks (cfn-lint E1040) accept it wherever a Lambda function ARN is
-    # expected (e.g. SNS lambda subscriptions). See cfn-lint issue #4621.
     "AWS::Serverless::Function": [
         _fmt("/properties/Arn/format", "AWS::Lambda::Function.Arn"),
     ],
