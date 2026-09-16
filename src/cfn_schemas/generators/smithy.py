@@ -60,6 +60,7 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::DynamoDB::GlobalTable": [
         "/definitions/KeySchema",
         "/definitions/LocalSecondaryIndex/properties/KeySchema",
+        "/definitions/Projection/properties/NonKeyAttributes",
         "/definitions/SSESpecification/properties/SSEType",
     ],
     "AWS::EC2::Instance": ["/properties/InstanceType"],

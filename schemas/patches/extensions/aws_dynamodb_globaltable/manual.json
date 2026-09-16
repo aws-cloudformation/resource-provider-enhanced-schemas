@@ -31,10 +31,5 @@
    "AES256",
    "KMS"
   ]
- },
- {
-  "op": "add",
-  "path": "/definitions/Projection/properties/NonKeyAttributes/minItems",
-  "value": 0
  }
 ]
