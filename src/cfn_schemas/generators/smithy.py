@@ -43,6 +43,13 @@ _SKIP_RESOURCE_TYPES = {"AWS::CloudFormation::Stack"}
 _SKIP_PROPERTY_NAMES = {"State"}
 _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::AmazonMQ::Broker": ["/properties/StorageType"],
+    # Smithy @length(min:1) is wrong here: CloudFormation accepts an empty list.
+    "AWS::Backup::Framework": [
+        "/definitions/FrameworkControl/properties/ControlScope/properties/ComplianceResourceIds",
+    ],
+    # Smithy @length(max:63) only covers the taint key name segment; EKS also
+    # allows a DNS-subdomain prefix (<=253), so the real max is 253+1+63=317.
+    "AWS::EKS::Nodegroup": ["/definitions/Taint/properties/Key"],
     "AWS::CloudFormation::StackSet": ["/properties/ExecutionRoleName"],
     "AWS::CloudFront::Distribution": ["/definitions/Cookies/properties/Forward"],
     "AWS::Bedrock::Guardrail": ["/definitions/SensitiveInformationPolicyConfig/properties/RegexesConfig"],

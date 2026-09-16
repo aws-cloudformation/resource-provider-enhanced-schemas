@@ -1,7 +1,7 @@
 [
  {
   "op": "add",
-  "path": "/definitions/FrameworkControl/properties/ControlScope/properties/ComplianceResourceIds/minItems",
-  "value": 0
+  "path": "/definitions/FrameworkControl/properties/ControlScope/properties/ComplianceResourceIds/maxItems",
+  "value": 100
  }
 ]
