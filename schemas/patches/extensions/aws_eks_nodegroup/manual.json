@@ -8,5 +8,10 @@
    "OnDemand",
    "SPOT"
   ]
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Taint/properties/Key/maxLength",
+  "value": 317
  }
 ]
