@@ -129,6 +129,9 @@ _PATH_EXCEPTIONS: dict[str, list[str]] = {
     "rds": ["/properties/ReplicaMode"],
     "ec2": ["/properties/Domain", "/properties/Type"],
     "iam": ["/properties/InstanceProfileName"],
+    # Forwarded-header allow-lists are open-ended (customers pass Sec-WebSocket-*,
+    # X-Forwarded-Host, etc.); the Smithy enum is not exhaustive.
+    "lightsail": ["/definitions/HeaderObject/properties/HeadersAllowList/items"],
 }
 
 # Smithy service name → CF service name
