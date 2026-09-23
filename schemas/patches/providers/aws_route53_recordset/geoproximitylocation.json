@@ -1,0 +1,15 @@
+[
+ {
+  "op": "test",
+  "path": "/definitions/GeoProximityLocation/type",
+  "value": "object"
+ },
+ {
+  "op": "add",
+  "path": "/properties/GeoProximityLocation",
+  "value": {
+   "$ref": "#/definitions/GeoProximityLocation",
+   "description": "Geoproximity resource record sets only: A complex type that lets you specify where your resources are located. Only one of LocalZoneGroup, Coordinates, or AWSRegion is allowed per request at a time."
+  }
+ }
+]
