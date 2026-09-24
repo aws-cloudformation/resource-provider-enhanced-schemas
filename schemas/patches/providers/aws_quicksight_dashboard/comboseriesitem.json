@@ -1,0 +1,27 @@
+[
+ {
+  "op": "test",
+  "path": "/definitions/ComboSeriesItem",
+  "value": {
+   "additionalProperties": false,
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "op": "replace",
+  "path": "/definitions/ComboSeriesItem",
+  "value": {
+   "additionalProperties": false,
+   "type": "object",
+   "properties": {
+    "FieldComboSeriesItem": {
+     "$ref": "#/definitions/FieldComboSeriesItem"
+    },
+    "DataFieldComboSeriesItem": {
+     "$ref": "#/definitions/DataFieldComboSeriesItem"
+    }
+   }
+  }
+ }
+]

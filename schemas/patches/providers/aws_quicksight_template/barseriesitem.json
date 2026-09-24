@@ -1,0 +1,27 @@
+[
+ {
+  "op": "test",
+  "path": "/definitions/BarSeriesItem",
+  "value": {
+   "additionalProperties": false,
+   "type": "object",
+   "properties": {}
+  }
+ },
+ {
+  "op": "replace",
+  "path": "/definitions/BarSeriesItem",
+  "value": {
+   "additionalProperties": false,
+   "type": "object",
+   "properties": {
+    "FieldBarSeriesItem": {
+     "$ref": "#/definitions/FieldBarSeriesItem"
+    },
+    "DataFieldBarSeriesItem": {
+     "$ref": "#/definitions/DataFieldBarSeriesItem"
+    }
+   }
+  }
+ }
+]
