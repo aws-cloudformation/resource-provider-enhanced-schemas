@@ -49,16 +49,16 @@ def _schema_url(region: str) -> str:
     return f"https://schema.cloudformation.{region}.amazonaws.com{suffix}/CloudformationSchema.zip"
 
 
-_EMPTY_DEF = {"additionalProperties": False, "properties": {}, "type": "object"}
-
-
 def _remove_empty_definitions(spec: dict) -> dict:
-    """Remove empty definitions that break meta-schema validation."""
+    """Remove empty definition shapes that break meta-schema validation."""
     if "definitions" in spec:
         spec["definitions"] = {
             k: v for k, v in spec["definitions"].items()
-            if v and v != _EMPTY_DEF
+            if v
         }
+        for definition in spec["definitions"].values():
+            if isinstance(definition, dict) and definition.get("properties") == {}:
+                definition.pop("properties")
     return spec
 
 

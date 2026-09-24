@@ -10,6 +10,7 @@ import pytest
 from cfn_schemas.assembly import apply_patches, assemble_schema, translate_custom_keywords
 from cfn_schemas.generators import GENERATORS
 from cfn_schemas.generators.base import BaseGenerator
+from cfn_schemas.generators.schemas import _remove_empty_definitions
 from cfn_schemas.resolver import RefResolutionError, RefResolver
 
 
@@ -40,6 +41,29 @@ class TestBaseGenerator:
         path = tmp_path / "a" / "b" / "c.json"
         gen.write_json(path, {"x": 1})
         assert path.exists()
+
+
+class TestEmptyDefinitionRemoval:
+    def test_referenced_empty_object_definition_stays_resolvable(self):
+        schema = {
+            "definitions": {
+                "BarSeriesItem": {
+                    "additionalProperties": False,
+                    "properties": {},
+                    "type": "object",
+                }
+            },
+            "properties": {
+                "Series": {"$ref": "#/definitions/BarSeriesItem"},
+            },
+        }
+
+        sanitized = _remove_empty_definitions(schema)
+
+        assert sanitized["definitions"]["BarSeriesItem"] == {
+            "additionalProperties": False,
+            "type": "object",
+        }
 
 
 class TestRefResolver:
