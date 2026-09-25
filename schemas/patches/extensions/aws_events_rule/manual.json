@@ -20,6 +20,6 @@
  {
   "op": "add",
   "path": "/properties/ScheduleExpression/pattern",
-  "value": "^(rate\\(.+\\)|cron\\(.+\\)|at\\(.+\\))?$"
+  "value": "^(rate\\(.+\\)|cron\\(.+\\))?$"
  }
 ]
