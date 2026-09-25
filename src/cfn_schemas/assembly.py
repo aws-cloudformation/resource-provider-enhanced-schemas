@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -120,11 +121,32 @@ def _translate_dependent_excluded(
     return {"dependencies": dependencies}
 
 
+def _translate_enum_case_insensitive(values: list[str]) -> dict[str, Any]:
+    # everit / cfn-lint have no case-insensitive enum keyword, so express it as
+    # a case-insensitive anchored pattern. The (?i) flag is placed at the very
+    # start of the expression so it is honored by java.util.regex (everit) and
+    # by Python's re/regex engines alike; each value is escaped so regex
+    # metacharacters in enum members (e.g. "nodejs20.x") stay literal.
+    alternatives = "|".join(re.escape(str(v)) for v in values)
+    return {"pattern": f"(?i)^(?:{alternatives})$"}
+
+
 _TRANSLATORS: dict[str, Any] = {
     "requiredXor": _translate_required_xor,
     "requiredOr": _translate_required_or,
     "dependentExcluded": _translate_dependent_excluded,
+    "enumCaseInsensitive": _translate_enum_case_insensitive,
 }
+
+# Custom validation keywords with NO faithful Draft-7 equivalent. everit (EV's
+# validator) ignores them silently, so leaving them in a "standard" artifact
+# would look like an enforced constraint while enforcing nothing. We drop them
+# from the standard outputs (and log it); the raw cfn-lint patches keep them,
+# because cfn-lint has real handlers.
+#   - maxUniqueItems: counts DISTINCT items (CloudWatch dedups actions);
+#     maxItems counts duplicates too, so it would over-block valid templates.
+# (uniqueKeys is NOT here: it degrades safely to uniqueItems:true, see below.)
+_UNTRANSLATABLE: frozenset[str] = frozenset({"maxUniqueItems"})
 
 
 def translate_custom_keywords(schema: Any) -> Any:
@@ -134,6 +156,11 @@ def translate_custom_keywords(schema: Any) -> Any:
     - requiredXor -> oneOf with required
     - requiredOr -> anyOf with required
     - dependentExcluded -> dependencies with not/anyOf
+    - enumCaseInsensitive -> case-insensitive anchored pattern
+    - uniqueKeys -> uniqueItems: true (safe subset: whole-item uniqueness,
+      catches exact-duplicate objects with no false positives)
+
+    Keywords in ``_UNTRANSLATABLE`` are dropped (no faithful Draft-7 form).
     """
     if isinstance(schema, list):
         return [translate_custom_keywords(item) for item in schema]
@@ -144,7 +171,13 @@ def translate_custom_keywords(schema: Any) -> Any:
     all_of: list[dict[str, Any]] = []
 
     for key, value in schema.items():
-        if key in _TRANSLATORS:
+        if key in _UNTRANSLATABLE:
+            logger.debug("Dropping untranslatable keyword %r from standard output", key)
+            continue
+        if key == "uniqueKeys":
+            # degrade to whole-item uniqueness; idempotent if already present
+            result["uniqueItems"] = True
+        elif key in _TRANSLATORS:
             all_of.append(_TRANSLATORS[key](value))
         else:
             result[key] = translate_custom_keywords(value)
@@ -158,6 +191,80 @@ def translate_custom_keywords(schema: Any) -> Any:
 
 def _format_json(data: Any) -> str:
     return json.dumps(data, indent=1, separators=(",", ": "), sort_keys=True) + "\n"
+
+
+def translate_patch_op(op: dict[str, Any]) -> dict[str, Any] | None:
+    """Translate a single RFC 6902 patch op into standard JSON Schema.
+
+    EV overlays our raw patches onto the live registry schema, so the custom
+    keywords must be translated at the PATCH level (not only in the assembled
+    schema). Cases handled:
+
+    - the op's path targets a custom keyword leaf (e.g. ``/requiredXor``): the
+      leaf is rewritten to its standard sibling (``oneOf``/``anyOf``/
+      ``dependencies``/``pattern``) and the value is translated to match. The
+      op keeps its exact parent location, so it applies as surgically as the
+      original.
+    - the op's path targets an UNTRANSLATABLE keyword leaf (``maxUniqueItems``):
+      the op is dropped (returns ``None``), because everit would ignore it and
+      no faithful Draft-7 form exists.
+    - the op's path targets ``uniqueKeys``: rewritten to ``uniqueItems`` with
+      value ``true`` (safe whole-item-uniqueness subset).
+    - the op's value contains custom keywords nested inside a subschema: those
+      are translated (or dropped) in place via ``translate_custom_keywords``.
+    """
+    path = op.get("path", "")
+    parts = path.split("/")
+    leaf = parts[-1] if parts else ""
+    opname = op.get("op")
+    if leaf in _UNTRANSLATABLE and opname in ("add", "replace"):
+        logger.debug("Dropping untranslatable patch op at %s", path)
+        return None
+
+    new = dict(op)
+    if "value" in new:
+        new["value"] = translate_custom_keywords(new["value"])
+
+    if opname in ("add", "replace"):
+        if leaf == "uniqueKeys":
+            parts[-1] = "uniqueItems"
+            new["path"] = "/".join(parts)
+            new["value"] = True
+        elif leaf in _TRANSLATORS:
+            # helper returns a single-key wrapper, e.g. {"oneOf": [...]}
+            wrapper = _TRANSLATORS[leaf](op.get("value"))
+            (new_leaf, new_value), = wrapper.items()
+            parts[-1] = new_leaf
+            new["path"] = "/".join(parts)
+            new["value"] = new_value
+    return new
+
+
+def assemble_standard_patches(schemas_dir: Path, output_dir: Path) -> int:
+    """Write a translated (standard JSON Schema) copy of every patch file.
+
+    Mirrors the ``patches/{providers,extensions}/<type>/<name>.json`` layout so
+    a consumer (e.g. EV) can overlay the standard patches exactly where it
+    overlays the raw ones, but with every custom keyword expressed in Draft-7
+    (or dropped when no faithful equivalent exists).
+    """
+    patches_dir = schemas_dir / "patches"
+    count = 0
+    for src in sorted(patches_dir.rglob("*.json")):
+        ops = json.loads(src.read_text())
+        if not isinstance(ops, list):
+            continue
+        translated = [
+            t for op in ops if (t := translate_patch_op(op)) is not None
+        ]
+        rel = src.relative_to(patches_dir)
+        out_file = output_dir / rel
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        out_file.write_text(_format_json(translated))
+        count += 1
+
+    logger.info("Wrote %d standard patch files to %s", count, output_dir)
+    return 0
 
 
 def _get_patch_files(patches_dir: Path, resource_type: str) -> list[Path]:

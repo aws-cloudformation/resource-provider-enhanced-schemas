@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 
-from cfn_schemas.assembly import apply_patches, assemble_schema, translate_custom_keywords
+from cfn_schemas.assembly import (
+    apply_patches,
+    assemble_schema,
+    translate_custom_keywords,
+    translate_patch_op,
+)
 from cfn_schemas.generators import GENERATORS
 from cfn_schemas.generators.base import BaseGenerator
 from cfn_schemas.resolver import RefResolutionError, RefResolver
@@ -153,11 +159,101 @@ class TestTranslateCustomKeywords:
         assert len(result["allOf"]) == 2
         assert result["allOf"][0] == {"required": ["X"]}
 
+    def test_enum_case_insensitive(self):
+        schema = {"type": "string", "enumCaseInsensitive": ["KMS", "nodejs20.x"]}
+        result = translate_custom_keywords(schema)
+        assert "enumCaseInsensitive" not in result
+        assert result["allOf"] == [{"pattern": "(?i)^(?:KMS|nodejs20\\.x)$"}]
+        # the emitted pattern actually matches case-insensitively and anchors
+        pattern = result["allOf"][0]["pattern"]
+        assert re.match(pattern, "kms") and re.match(pattern, "NODEJS20.X")
+        assert not re.match(pattern, "kms2")
+
     def test_leaves_annotations_alone(self):
-        schema = {"lifecycle": {"status": "shutdown"}, "enumCaseInsensitive": ["a", "b"]}
+        schema = {"lifecycle": {"status": "shutdown"}, "description": "hello"}
         result = translate_custom_keywords(schema)
         assert result["lifecycle"] == {"status": "shutdown"}
-        assert result["enumCaseInsensitive"] == ["a", "b"]
+        assert result["description"] == "hello"
+        assert "allOf" not in result
+
+    def test_drops_untranslatable_keywords(self):
+        schema = {"properties": {"Actions": {"type": "array", "maxUniqueItems": 5}}}
+        result = translate_custom_keywords(schema)
+        assert "maxUniqueItems" not in json.dumps(result)
+        assert result["properties"]["Actions"]["type"] == "array"
+
+    def test_unique_keys_becomes_unique_items(self):
+        schema = {"type": "array", "uniqueKeys": ["Name"]}
+        result = translate_custom_keywords(schema)
+        assert "uniqueKeys" not in result
+        assert result["uniqueItems"] is True
+
+    def test_unique_keys_idempotent_with_existing_unique_items(self):
+        schema = {"type": "array", "uniqueItems": True, "uniqueKeys": ["Name"]}
+        result = translate_custom_keywords(schema)
+        assert "uniqueKeys" not in result
+        assert result["uniqueItems"] is True
+        assert "allOf" not in result  # no redundant wrapper
+
+
+class TestTranslatePatchOp:
+    def test_required_xor_path(self):
+        op = {"op": "add", "path": "/requiredXor", "value": ["A", "B"]}
+        assert translate_patch_op(op) == {
+            "op": "add",
+            "path": "/oneOf",
+            "value": [{"required": ["A"]}, {"required": ["B"]}],
+        }
+
+    def test_required_or_path(self):
+        op = {"op": "add", "path": "/requiredOr", "value": ["A", "B"]}
+        assert translate_patch_op(op) == {
+            "op": "add",
+            "path": "/anyOf",
+            "value": [{"required": ["A"]}, {"required": ["B"]}],
+        }
+
+    def test_dependent_excluded_path(self):
+        op = {"op": "add", "path": "/dependentExcluded", "value": {"A": ["B"]}}
+        assert translate_patch_op(op) == {
+            "op": "add",
+            "path": "/dependencies",
+            "value": {"A": {"not": {"anyOf": [{"required": ["B"]}]}}},
+        }
+
+    def test_enum_case_insensitive_nested_path(self):
+        op = {
+            "op": "add",
+            "path": "/definitions/X/properties/Y/enumCaseInsensitive",
+            "value": ["KMS", "nodejs20.x"],
+        }
+        result = translate_patch_op(op)
+        assert result["path"] == "/definitions/X/properties/Y/pattern"
+        assert result["value"] == "(?i)^(?:KMS|nodejs20\\.x)$"
+
+    def test_passthrough_standard_op(self):
+        op = {"op": "add", "path": "/properties/Foo/maxItems", "value": 5}
+        assert translate_patch_op(op) == op
+
+    def test_drops_max_unique_items_op(self):
+        op = {"op": "add", "path": "/properties/AlarmActions/maxUniqueItems", "value": 5}
+        assert translate_patch_op(op) is None
+
+    def test_translates_unique_keys_op(self):
+        op = {"op": "add", "path": "/properties/Attrs/uniqueKeys", "value": ["Name"]}
+        assert translate_patch_op(op) == {
+            "op": "add",
+            "path": "/properties/Attrs/uniqueItems",
+            "value": True,
+        }
+
+    def test_applied_standard_patch_has_no_custom_keywords(self):
+        base = {"properties": {"A": {}, "B": {}}}
+        raw = [{"op": "add", "path": "/requiredXor", "value": ["A", "B"]}]
+        std = [translate_patch_op(o) for o in raw]
+        result = apply_patches(base, std)
+        assert "requiredXor" not in result
+        assert result["oneOf"] == [{"required": ["A"]}, {"required": ["B"]}]
 
 
 class TestLifecycleGenerator:

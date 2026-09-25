@@ -8,6 +8,8 @@ Download the latest schemas from the [latest release](https://github.com/aws-clo
 
 - **`schemas-cfn-lint.zip`** — Content-addressed schemas with per-region mappings and custom validation keywords
 - **`schemas-standard.zip`** — Flat per-resource-type schemas with standard JSON Schema keywords
+- **`patches.zip`** — Raw human-authored patch overlays (custom validation keywords)
+- **`patches-standard.zip`** — Patch overlays with custom keywords translated to standard JSON Schema, for consumers that overlay patches onto a base schema but only support Draft-7
 
 ### cfn-lint format
 
@@ -62,6 +64,9 @@ cfn-schemas assemble --output build/cfnlint
 
 # Assemble standard format (flat, translated keywords)
 cfn-schemas assemble --standard --output build/standard
+
+# Emit standard (translated) patch overlays, mirroring schemas/patches/ layout
+cfn-schemas standard-patches --output build/standard-patches
 
 # Validate schema integrity
 cfn-schemas validate
