@@ -8,7 +8,7 @@ import logging
 import sys
 from pathlib import Path
 
-from cfn_schemas.assembly import assemble_all
+from cfn_schemas.assembly import assemble_all, assemble_standard_patches
 from cfn_schemas.audit import audit_patches, format_report
 from cfn_schemas.generators import GENERATORS
 from cfn_schemas.generators.schemas import SchemasGenerator
@@ -73,6 +73,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_assemble(args: argparse.Namespace) -> int:
     return assemble_all(_get_schemas_dir(), Path(args.output), standard=args.standard)
+
+
+def cmd_standard_patches(args: argparse.Namespace) -> int:
+    return assemble_standard_patches(_get_schemas_dir(), Path(args.output))
 
 
 def cmd_audit_patches(args: argparse.Namespace) -> int:
@@ -172,6 +176,16 @@ def main() -> None:
         help="Translate custom keywords into standard JSON Schema",
     )
 
+    std_patches = sub.add_parser(
+        "standard-patches",
+        help="Emit a translated (standard JSON Schema) copy of every patch file",
+    )
+    std_patches.add_argument(
+        "--output",
+        default="build/standard-patches",
+        help="Output directory for standard patches (default: build/standard-patches)",
+    )
+
     audit = sub.add_parser(
         "audit-patches",
         help="Find broken, redundant, or stale patches",
@@ -200,6 +214,7 @@ def main() -> None:
         "generate": cmd_generate,
         "validate": cmd_validate,
         "assemble": cmd_assemble,
+        "standard-patches": cmd_standard_patches,
         "audit-patches": cmd_audit_patches,
         "clean-patches": cmd_clean_patches,
         "finalize": cmd_finalize,

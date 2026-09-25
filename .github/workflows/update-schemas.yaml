@@ -35,6 +35,7 @@ jobs:
         run: |
           cfn-schemas assemble --output build/cfnlint
           cfn-schemas assemble --standard --output build/standard
+          cfn-schemas standard-patches --output build/standard-patches
 
       - name: Audit patches
         run: cfn-schemas audit-patches > build/patch-audit-report.txt
@@ -52,6 +53,9 @@ jobs:
           zip -r ../../schemas-standard.zip .
           cd ../..
           zip -r patches.zip schemas/patches/
+          cd build/standard-patches
+          zip -r ../../patches-standard.zip .
+          cd ../..
           SCHEMA_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" python - <<'PY'
           import json
           import os
@@ -81,5 +85,6 @@ jobs:
           gh release upload latest schemas-cfn-lint.zip --clobber
           gh release upload latest schemas-standard.zip --clobber
           gh release upload latest patches.zip --clobber
+          gh release upload latest patches-standard.zip --clobber
           gh release upload latest build/patch-audit-report.txt --clobber
           gh release upload latest version.json --clobber

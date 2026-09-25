@@ -36,6 +36,14 @@ def standard_dir(build_dir):
 
 
 @pytest.fixture(scope="session")
+def standard_patches_dir(build_dir):
+    d = build_dir / "standard-patches"
+    if not d.exists():
+        pytest.skip("standard patches build not found")
+    return d
+
+
+@pytest.fixture(scope="session")
 def extensions_dir():
     d = Path(__file__).parent.parent.parent / "schemas" / "patches" / "extensions"
     if not d.exists():

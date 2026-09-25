@@ -105,7 +105,14 @@ class TestCfnLintOutput:
 
 class TestStandardOutput:
     def test_no_custom_validation_keywords(self, standard_dir):
-        custom_keywords = {"requiredXor", "requiredOr", "dependentExcluded"}
+        custom_keywords = {
+            "requiredXor",
+            "requiredOr",
+            "dependentExcluded",
+            "enumCaseInsensitive",
+            "maxUniqueItems",
+            "uniqueKeys",
+        }
         failures = []
         for f in sorted(standard_dir.glob("*.json")):
             content = f.read_text()
@@ -113,6 +120,28 @@ class TestStandardOutput:
                 if f'"{kw}"' in content:
                     failures.append(f"{f.stem}: has {kw}")
         assert not failures, "Custom keywords found:\n" + "\n".join(failures[:20])
+
+    def test_standard_patches_have_no_translated_keywords(self, standard_patches_dir):
+        # No custom keyword may survive: the four translated ones, uniqueKeys
+        # (rewritten to uniqueItems:true), and maxUniqueItems (dropped, no
+        # faithful Draft-7 form) must all be absent from the standard patches.
+        forbidden = {
+            "requiredXor",
+            "requiredOr",
+            "dependentExcluded",
+            "enumCaseInsensitive",
+            "maxUniqueItems",
+            "uniqueKeys",
+        }
+        failures = []
+        for f in sorted(standard_patches_dir.rglob("*.json")):
+            content = f.read_text()
+            for kw in forbidden:
+                if f'"{kw}"' in content:
+                    failures.append(f"{f.relative_to(standard_patches_dir)}: has {kw}")
+        assert not failures, (
+            "Custom keywords in standard patches:\n" + "\n".join(failures[:20])
+        )
 
 
 class TestMetaSchemaValidation:
