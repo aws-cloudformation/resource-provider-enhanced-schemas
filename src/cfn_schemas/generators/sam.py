@@ -54,6 +54,22 @@ SAM_TO_CFN_TYPE: dict[str, str] = {
     "aws_serverless_statemachine": "AWS::StepFunctions::StateMachine",
 }
 
+# Valid shorthand forms the upstream SAM schema omits but the SAM transform
+# accepts. Each entry is an extra ``anyOf`` branch added to the property; the
+# forms SAM already declares are left untouched.
+SAM_PROPERTY_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
+    # AWS::Serverless::Api.EndpointConfiguration accepts a string shorthand in
+    # addition to the object form (the transform maps it to the RestApi
+    # EndpointConfiguration.Types list), but SAM's schema only models the
+    # object. https://github.com/aws-cloudformation/cfn-lint/issues/4736
+    "AWS::Serverless::Api": {
+        "EndpointConfiguration": {
+            "type": "string",
+            "enum": ["EDGE", "REGIONAL", "PRIVATE"],
+        },
+    },
+}
+
 _PASSTHROUGH_RE = re.compile(
     r"is passed directly to the \[`(\w+)`\].*?`(AWS::[A-Za-z0-9:]+)`"
 )
@@ -166,6 +182,9 @@ class SamGenerator(BaseGenerator):
             # Resolve PassThroughProps
             self._resolve_passthroughs(schema, all_defs, type_name, module_name)
 
+            # Add shorthand forms the upstream SAM schema omits
+            self._apply_overrides(schema, type_name)
+
             h = hashlib.sha256(
                 json.dumps(schema, sort_keys=True).encode()
             ).hexdigest()[:16]
@@ -254,6 +273,29 @@ class SamGenerator(BaseGenerator):
                                 deepcopy(cfn_props[prop_name]), cfn_defs,
                             )
                             schema["properties"][prop_name] = prop_val
+
+    def _apply_overrides(self, schema: dict, type_name: str) -> None:
+        """Add branches for valid shorthand forms the SAM schema omits.
+
+        The upstream SAM schema is copied verbatim, but it occasionally
+        models only one of several forms the SAM transform accepts. Each
+        override adds an extra ``anyOf`` branch to a property without
+        removing anything SAM already declared.
+        """
+        overrides = SAM_PROPERTY_OVERRIDES.get(type_name)
+        if not overrides:
+            return
+        props = schema.get("properties", {})
+        for prop_name, extra_branch in overrides.items():
+            existing = props.get(prop_name)
+            if not isinstance(existing, dict):
+                continue
+            branches = existing.get("anyOf")
+            if isinstance(branches, list):
+                if extra_branch not in branches:
+                    branches.append(deepcopy(extra_branch))
+            else:
+                props[prop_name] = {"anyOf": [existing, deepcopy(extra_branch)]}
 
     def _resolve_passthroughs(
         self, schema: dict, all_defs: dict, type_name: str, module_name: str
