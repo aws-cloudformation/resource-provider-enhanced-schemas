@@ -335,6 +335,50 @@ class TestManualGenerator:
             m.run()
 
 
+class TestSamOverrides:
+    def test_endpoint_configuration_string_branch_added(self, tmp_path):
+        from cfn_schemas.generators.sam import SamGenerator
+
+        gen = SamGenerator(schemas_dir=tmp_path / "schemas")
+        schema = {
+            "typeName": "AWS::Serverless::Api",
+            "properties": {
+                "EndpointConfiguration": {
+                    "anyOf": [
+                        {"type": "object"},
+                        {"$ref": "#/definitions/EndpointConfiguration"},
+                    ]
+                }
+            },
+        }
+        gen._apply_overrides(schema, "AWS::Serverless::Api")
+        branches = schema["properties"]["EndpointConfiguration"]["anyOf"]
+        # String shorthand (cfn-lint#4736) added; existing forms untouched.
+        assert {"type": "string", "enum": ["EDGE", "REGIONAL", "PRIVATE"]} in branches
+        assert {"type": "object"} in branches
+        assert {"$ref": "#/definitions/EndpointConfiguration"} in branches
+
+    def test_apply_overrides_is_idempotent(self, tmp_path):
+        from cfn_schemas.generators.sam import SamGenerator
+
+        gen = SamGenerator(schemas_dir=tmp_path / "schemas")
+        schema = {"properties": {"EndpointConfiguration": {"anyOf": [{"type": "object"}]}}}
+        gen._apply_overrides(schema, "AWS::Serverless::Api")
+        gen._apply_overrides(schema, "AWS::Serverless::Api")
+        branches = schema["properties"]["EndpointConfiguration"]["anyOf"]
+        assert branches.count(
+            {"type": "string", "enum": ["EDGE", "REGIONAL", "PRIVATE"]}
+        ) == 1
+
+    def test_no_override_for_unlisted_type(self, tmp_path):
+        from cfn_schemas.generators.sam import SamGenerator
+
+        gen = SamGenerator(schemas_dir=tmp_path / "schemas")
+        schema = {"properties": {"EndpointConfiguration": {"anyOf": [{"type": "object"}]}}}
+        gen._apply_overrides(schema, "AWS::Serverless::Function")
+        assert schema["properties"]["EndpointConfiguration"]["anyOf"] == [{"type": "object"}]
+
+
 def _make_generator(tmp_path: Path) -> BaseGenerator:
     """Create a concrete generator for testing base class methods."""
     schemas_dir = tmp_path / "schemas"
