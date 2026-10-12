@@ -41,6 +41,7 @@ SAM_TYPE_MAP = {
     "aws_serverless_networkconnector": "AWS::Serverless::NetworkConnector",
     "aws_serverless_simpletable": "AWS::Serverless::SimpleTable",
     "aws_serverless_statemachine": "AWS::Serverless::StateMachine",
+    "aws_serverless_webfunction": "AWS::Serverless::WebFunction",
     "aws_serverless_websocketapi": "AWS::Serverless::WebSocketApi",
 }
 
