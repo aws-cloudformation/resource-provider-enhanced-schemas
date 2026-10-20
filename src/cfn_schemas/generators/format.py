@@ -64,6 +64,11 @@ def _make_patch(
         ref = original_ref
         _, resolved = resolver.resolve(ref)
 
+    # Empty {} catch-all via $ref (e.g. SAM PassThroughProp): a format here
+    # can't apply and would leak to every referrer. #31
+    if isinstance(resolved, dict) and not resolved:
+        return None
+
     path = ref[1:]  # strip leading #
 
     if isinstance(resolved, dict) and "items" in resolved:
@@ -161,6 +166,14 @@ _SG_NAME_PROPS = [
 _SG_SKIP_TYPES = {
     "AWS::Pipes::Pipe", "AWS::EC2::NetworkInsightsAnalysis",
     "AWS::AutoScaling::LaunchConfiguration", "AWS::EC2::Instance",
+    # names not ids; set via _MANUAL_PATCHES (#52)
+    "AWS::EC2::LaunchTemplate",
+}
+
+# Subnets that also accept dynamic "$." paths (Pipes target params); mirrors
+# _SG_SKIP_TYPES. (#51)
+_SUBNET_SKIP_TYPES = {
+    "AWS::Pipes::Pipe",
 }
 
 # CIDR property names
@@ -317,6 +330,20 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
             "AWS::Route53::AliasTarget.HostedZoneId",
         ),
     ],
+    # SecurityGroups are names, SecurityGroupIds are ids (#52)
+    "AWS::EC2::LaunchTemplate": [
+        _fmt("/definitions/LaunchTemplateData/properties/SecurityGroups/format", _SG_NAMES_FMT),
+        _fmt("/definitions/LaunchTemplateData/properties/SecurityGroups/items/format", _SG_NAME),
+        _fmt("/definitions/LaunchTemplateData/properties/SecurityGroupIds/format", _SG_IDS_FMT),
+        _fmt("/definitions/LaunchTemplateData/properties/SecurityGroupIds/items/format", _SG_ID),
+    ],
+    # Read-only attrs returning an ARN / sg id; add the format for E1040 (#53)
+    "AWS::KMS::ReplicaKey": [
+        _fmt("/properties/Arn/format", "AWS::KMS::Key.Arn"),
+    ],
+    "AWS::SageMaker::Domain": [
+        _fmt("/properties/SecurityGroupIdForDomainBoundary/format", _SG_ID),
+    ],
 }
 
 
@@ -381,6 +408,8 @@ def _make_sg_name_patches(
 def _make_subnet_ids_patches(
     resource_type: str, ref: str, resolver: RefResolver
 ) -> list[dict[str, Any]]:
+    if resource_type in _SUBNET_SKIP_TYPES:
+        return []
     ref, resolved = _resolve_through_refs(ref, resolver)
     path = ref[1:]
     items = resolved.get("items", {}) if isinstance(resolved, dict) else {}
