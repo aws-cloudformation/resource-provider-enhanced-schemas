@@ -1,6 +1,11 @@
 [
  {
   "op": "add",
+  "path": "/definitions/RunConfig/properties/MemoryInMB/maximum",
+  "value": 10240
+ },
+ {
+  "op": "add",
   "path": "/definitions/RunConfig/properties/MemoryInMB/minimum",
   "value": 960
  }
