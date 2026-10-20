@@ -310,6 +310,113 @@ class TestFormatGenerator:
         paths = {p["path"] for p in json.loads(out.read_text())}
         assert "/properties/CertificateArn/format" in paths
 
+    def _run_one(self, tmp_path, schema):
+        from cfn_schemas.generators.format import FormatGenerator
+
+        resources = tmp_path / "resources"
+        resources.mkdir(exist_ok=True)
+        (resources / "0.json").write_text(json.dumps(schema))
+        FormatGenerator(schemas_dir=tmp_path).run()
+        out = (
+            tmp_path
+            / "patches"
+            / "extensions"
+            / BaseGenerator.resource_type_to_dir(schema["typeName"])
+            / "format.json"
+        )
+        if not out.exists():
+            return {}
+        return {p["path"]: p.get("value") for p in json.loads(out.read_text())}
+
+    def test_launchtemplate_securitygroups_are_names(self, tmp_path):
+        """SecurityGroups on a LaunchTemplate are names, not ids (issue #52)."""
+        patches = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::EC2::LaunchTemplate",
+                "properties": {},
+                "definitions": {
+                    "LaunchTemplateData": {
+                        "type": "object",
+                        "properties": {
+                            "SecurityGroups": {"type": "array", "items": {"type": "string"}},
+                            "SecurityGroupIds": {"type": "array", "items": {"type": "string"}},
+                        },
+                    }
+                },
+            },
+        )
+        sg = "/definitions/LaunchTemplateData/properties/SecurityGroups/items/format"
+        ids = "/definitions/LaunchTemplateData/properties/SecurityGroupIds/items/format"
+        assert patches[sg] == "AWS::EC2::SecurityGroup.Name"
+        assert patches[ids] == "AWS::EC2::SecurityGroup.Id"
+
+    def test_pipes_subnets_get_no_id_format(self, tmp_path):
+        """Pipes target-parameter Subnets accept dynamic $. paths (issue #51)."""
+        patches = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::Pipes::Pipe",
+                "properties": {},
+                "definitions": {
+                    "AwsVpcConfiguration": {
+                        "type": "object",
+                        "properties": {
+                            "Subnets": {"type": "array", "items": {"type": "string"}}
+                        },
+                    }
+                },
+            },
+        )
+        assert not any("Subnets" in path for path in patches)
+
+    def test_attribute_formats_added(self, tmp_path):
+        """Read-only attributes that return an ARN/id get a format (issue #53)."""
+        kms = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::KMS::ReplicaKey",
+                "properties": {"Arn": {"type": "string"}},
+            },
+        )
+        assert kms["/properties/Arn/format"] == "AWS::KMS::Key.Arn"
+        sm = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::SageMaker::Domain",
+                "properties": {"SecurityGroupIdForDomainBoundary": {"type": "string"}},
+            },
+        )
+        assert sm["/properties/SecurityGroupIdForDomainBoundary/format"] == "AWS::EC2::SecurityGroup.Id"
+
+    def test_empty_shared_definition_not_stamped(self, tmp_path):
+        """Empty {} shared defs are skipped; non-empty shared defs still stamp (#31)."""
+        patches = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::Example::Thing",
+                "properties": {},
+                "definitions": {
+                    "PassThroughProp": {},
+                    "SharedRole": {"type": "string"},
+                    "A": {
+                        "type": "object",
+                        "properties": {"FooRoleArn": {"$ref": "#/definitions/PassThroughProp"}},
+                    },
+                    "B": {
+                        "type": "object",
+                        "properties": {"BarRoleArn": {"$ref": "#/definitions/SharedRole"}},
+                    },
+                    "C": {
+                        "type": "object",
+                        "properties": {"BazRoleArn": {"$ref": "#/definitions/SharedRole"}},
+                    },
+                },
+            },
+        )
+        assert "/definitions/PassThroughProp/format" not in patches
+        assert patches["/definitions/SharedRole/format"] == "AWS::IAM::Role.Arn"
+
 
 class TestManualGenerator:
     def test_validates_good_patches(self, tmp_path):
