@@ -105,7 +105,7 @@ _ARN_MAPPINGS: list[tuple[list[str], str, set[str]]] = [
     (
         ["RoleArn", "RoleARN", "IAMRoleARN", "IamRoleArn"],
         "AWS::IAM::Role.Arn",
-        {"AWS::Kendra::Index"},
+        {"AWS::Kendra::Index", "AWS::DevOpsAgent::Service"},
     ),
     (
         ["KmsKeyArn", "KMSKeyArn", "KmsArn", "KMSArn"],
@@ -343,6 +343,19 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
     ],
     "AWS::SageMaker::Domain": [
         _fmt("/properties/SecurityGroupIdForDomainBoundary/format", _SG_ID),
+    ],
+    # RoleArn handled per property; type excluded from the generic mapping (#49)
+    "AWS::DevOpsAgent::Service": [
+        # documented "" sentinel: allow empty alongside the format
+        _fmt(
+            "/definitions/MCPServerSigV4AuthorizationConfig/properties/RoleArn/anyOf",
+            [{"format": "AWS::IAM::Role.Arn"}, {"enum": [""]}],
+        ),
+        # no empty form; plain format (generic mapping skipped for this type)
+        _fmt(
+            "/definitions/RegisteredMCPServerSigV4Details/properties/RoleArn/format",
+            "AWS::IAM::Role.Arn",
+        ),
     ],
 }
 
