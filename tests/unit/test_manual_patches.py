@@ -77,3 +77,37 @@ class TestSqsQueueTags:
     )
     def test_rejects_invalid_tags(self, tag_validator, tag):
         assert list(tag_validator.iter_errors(tag)) != []
+
+
+
+class TestServerlessFunctionAlarms:
+    """DeploymentPreference.Alarms accepts a list of alarm names (#54)."""
+
+    # DeploymentPreference.Alarms as published in the upstream SAM schema.
+    BASE = {
+        "properties": {"Arn": {"type": "string"}},
+        "definitions": {
+            "DeploymentPreference": {
+                "type": "object",
+                "properties": {
+                    "Alarms": {
+                        "anyOf": [
+                            {"type": "object"},
+                            {"type": "array", "items": {"type": "object"}},
+                        ]
+                    }
+                },
+            }
+        },
+    }
+
+    def _alarms_schema(self):
+        patched = apply_patches(self.BASE, _load_manual("aws_serverless_function"))
+        return patched["definitions"]["DeploymentPreference"]["properties"]["Alarms"]
+
+    def test_accepts_list_of_names(self):
+        RegexValidator(self._alarms_schema()).validate(["MyService-High-5xx-Alarm"])
+
+    def test_rejects_non_list_scalar(self):
+        with pytest.raises(ValidationError):
+            RegexValidator(self._alarms_schema()).validate("not-a-list")
