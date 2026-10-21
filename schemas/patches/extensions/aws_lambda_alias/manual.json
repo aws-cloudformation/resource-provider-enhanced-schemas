@@ -11,11 +11,29 @@
  },
  {
   "op": "add",
-  "path": "/dependentExcluded",
+  "path": "/dependencies",
   "value": {
-   "ProvisionedConcurrencyConfig": [
-    "RoutingConfig"
-   ]
+   "ProvisionedConcurrencyConfig": {
+    "not": {
+     "properties": {
+      "RoutingConfig": {
+       "properties": {
+        "AdditionalVersionWeights": {
+         "minItems": 1,
+         "type": "array"
+        }
+       },
+       "required": [
+        "AdditionalVersionWeights"
+       ],
+       "type": "object"
+      }
+     },
+     "required": [
+      "RoutingConfig"
+     ]
+    }
+   }
   }
  }
 ]

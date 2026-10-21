@@ -1,0 +1,7 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/Parameter/properties/Value/pattern",
+  "value": "^[ \\t]*[\\x20-\\x7E]+([ \\t]+[\\x20-\\x7E]+)*[ \\t]*$"
+ }
+]

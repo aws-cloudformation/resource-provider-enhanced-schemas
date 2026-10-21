@@ -43,6 +43,27 @@ _SKIP_RESOURCE_TYPES = {"AWS::CloudFormation::Stack"}
 _SKIP_PROPERTY_NAMES = {"State"}
 _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::AmazonMQ::Broker": ["/properties/StorageType"],
+    # Glue stores ConnectionType as a free string (new connectors are onboarded
+    # via dynamic config, not an API-model change), so the Smithy enum rejects
+    # valid types (ATHENA, REDSHIFT, ...). The registry schema types it a string.
+    "AWS::Glue::Connection": [
+        "/definitions/ConnectionInput/properties/ConnectionType",
+    ],
+    # web-function/ is a valid Lambda ResourceArn form the Smithy pattern omits;
+    # the registry schema leaves ResourceArn unconstrained.
+    "AWS::Lambda::ResourcePolicy": ["/properties/ResourceArn"],
+    # The Parameter definition is shared by header/query/body invocation params,
+    # which have different real limits, so the Smithy maxLength (512) is wrong
+    # for body params (48 KB values deploy fine). Drop the length constraints
+    # here; manual.json re-adds just the character pattern.
+    "AWS::Events::Connection": ["/definitions/Parameter/properties/Value"],
+    # MemoryInMB max 3008 is a Smithy-model-only bound: the registry schema
+    # (describe-type) and the AWS SDK model both leave MemoryInMB uncapped, so
+    # the Smithy max rejects values those contracts allow. Skip the whole
+    # property here and let manual.json re-add just the 960 minimum (dropping
+    # only the maximum). NOT confirmed against the live service (a CreateCanary
+    # pass-role restriction in the test account blocked the deploy probe).
+    "AWS::Synthetics::Canary": ["/definitions/RunConfig/properties/MemoryInMB"],
     # Smithy @length(min:1) is wrong here: CloudFormation accepts an empty list.
     "AWS::Backup::Framework": [
         "/definitions/FrameworkControl/properties/ControlScope/properties/ComplianceResourceIds",

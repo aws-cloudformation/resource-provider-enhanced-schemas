@@ -1,13 +1,21 @@
 [
  {
   "op": "add",
-  "path": "/dependentExcluded",
+  "path": "/not",
   "value": {
-   "Ipv6AddressCount": [
+   "properties": {
+    "Ipv6AddressCount": {
+     "minimum": 1,
+     "type": "integer"
+    },
+    "Ipv6Addresses": {
+     "minItems": 1,
+     "type": "array"
+    }
+   },
+   "required": [
+    "Ipv6AddressCount",
     "Ipv6Addresses"
-   ],
-   "Ipv6Addresses": [
-    "Ipv6AddressCount"
    ]
   }
  }
