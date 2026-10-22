@@ -320,14 +320,20 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
     ],
     "AWS::Route53::RecordSet": [
         _fmt(
-            "/definitions/AliasTarget/properties/HostedZoneId/format",
-            "AWS::Route53::AliasTarget.HostedZoneId",
+            "/definitions/AliasTarget/properties/HostedZoneId/anyOf",
+            [
+                {"format": "AWS::Route53::AliasTarget.HostedZoneId"},
+                {"format": "AWS::Route53::HostedZone.Id"},
+            ],
         ),
     ],
     "AWS::Route53::RecordSetGroup": [
         _fmt(
-            "/definitions/AliasTarget/properties/HostedZoneId/format",
-            "AWS::Route53::AliasTarget.HostedZoneId",
+            "/definitions/AliasTarget/properties/HostedZoneId/anyOf",
+            [
+                {"format": "AWS::Route53::AliasTarget.HostedZoneId"},
+                {"format": "AWS::Route53::HostedZone.Id"},
+            ],
         ),
     ],
     # SecurityGroups are names, SecurityGroupIds are ids (#52)
