@@ -21,7 +21,14 @@ reported the issue. Please try to include as much information as you can. Detail
 
 
 ## Contributing via Pull Requests
-Contributions via pull requests are much appreciated. Before sending us a pull request, please ensure that:
+Contributions via pull requests are much appreciated.
+
+If your change touches a validation constraint or the generators, please first read the
+contributor guides in [`.kiro/steering/`](.kiro/steering/) — they cover what belongs in this
+repo versus cfn-lint, how the automated build works, the patch model, and the requirement to
+validate a constraint change against the live service rather than a doc or model.
+
+Before sending us a pull request, please ensure that:
 
 1. You are working against the latest source on the *main* branch.
 2. You check existing open, and recently merged, pull requests to make sure someone else hasn't addressed the problem already.

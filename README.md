@@ -75,6 +75,20 @@ cfn-schemas validate
 cfn-schemas audit-patches
 ```
 
+## Contributor guides
+
+Before changing a constraint or the generators, read the guides in
+[`.kiro/steering/`](.kiro/steering/):
+
+- [`product.md`](.kiro/steering/product.md) — what belongs in this repo (schema constraints
+  only) and what goes to cfn-lint instead (warnings, cross-field consistency, typo-catches).
+- [`build.md`](.kiro/steering/build.md) — the automated, credential-less build; generated
+  files are git-ignored and must not be committed.
+- [`tech.md`](.kiro/steering/tech.md) — the patch model (`manual.json` vs the smithy skip-list),
+  custom keywords, and how they translate to standard JSON Schema.
+- [`verification.md`](.kiro/steering/verification.md) — the standard for a constraint change:
+  validate it against the live service, not a doc or model.
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.

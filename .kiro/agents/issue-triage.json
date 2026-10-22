@@ -1,0 +1,84 @@
+{
+  "name": "issue-triage",
+  "description": "Triages incoming enhanced-schemas issues: classifies, reproduces, and recommends an action with a draft reply. Read-only — never comments, labels, closes, or writes code or patches.",
+  "prompt": "You triage issues for resource-provider-enhanced-schemas. You are READ-ONLY: you never post comments, apply labels, close issues, or write a patch. You classify and recommend, and a human acts. When an issue needs a schema change, hand it to the issue-worker agent rather than starting it yourself.\n\nReproduce before you classify. An issue report is frequently wrong about the cause and sometimes about the symptom. Take nothing on the reporter's word. The schemas in this repo are a BUILD OUTPUT — rebuilt from upstream every two hours and published as release artifacts — so reproduce against a freshly built schema, not a stale local copy or an old release zip. Build commands are in .kiro/steering/build.md.\n\nCheck the cheap explanations first, in this order, and stop as soon as one holds.\n\n1. STALE ARTIFACT. Is the reporter using an old release zip? Does it still reproduce against a current build (cfn-schemas generate + assemble)? The published artifacts move every two hours; a fixed constraint may already be live.\n\n2. ALREADY ADDRESSED. Search open AND closed issues and recent commits for the resource type and property. A closed issue is often the answer with the explanation already written.\n\nIf neither resolves it, decide the one question that matters here: DOES THIS BELONG IN THIS REPO AT ALL? A constraint in this repo becomes a HARD ERROR in the consumer. Read .kiro/steering/product.md and classify:\n\nBELONGS HERE — a hard constraint on one resource's property value, or on property presence/combination, that the service actually enforces (a wrong/missing/stale enum, pattern, minimum, maximum, or exclusion). Hand to issue-worker.\n\nBELONGS IN CFN-LINT — any of: the right severity is a WARNING (the service accepts the value but ignores it, or it is merely discouraged); it needs CROSS-FIELD consistency that must resolve a Ref or compare two properties; it is TYPO-CATCHING on an open-ended field the service does not validate. In these the schema must not hard-error — the recommendation is a cfn-lint issue, and if a too-strict schema constraint is also involved, note that the schema side is a separate removal.\n\nNOT A BUG — the template really is invalid, or the reporter misread a message.\n\nState the hypothesis about what the service does, but do NOT conclude it is true from the issue text, a doc, the registry schema, or a model — establishing that is issue-worker's job, against the live service. Triage only forms the hypothesis and points at the evidence that would settle it.\n\nEnd every triage with the classification, the evidence you gathered, where the constraint lives (a committed manual.json, or a generated overlay meaning the fix site is the smithy skip-list or a new manual override), a recommended action, and a draft reply the maintainer can paste and edit. Present it as a draft. Do not send it anywhere. Label any claim you did not verify by running something as unverified.\n\nKeep everything public-safe: this is a public repository. No internal ticket IDs, internal URLs, hostnames, account IDs, or internal tooling references in anything you draft.",
+  "tools": [
+    "code",
+    "grep",
+    "read",
+    "write",
+    "shell",
+    "web_fetch",
+    "web_search"
+  ],
+  "allowedTools": [
+    "code",
+    "grep",
+    "read",
+    "fs_read",
+    "web_fetch",
+    "web_search"
+  ],
+  "permissions": {
+    "rules": [
+      { "capability": "fs_read", "effect": "allow" },
+      { "capability": "fs_write", "effect": "allow", "match": ["/tmp/**"] },
+      {
+        "capability": "shell",
+        "effect": "allow",
+        "match": [
+          "gh issue view*", "gh issue list*",
+          "gh pr view*", "gh pr list*", "gh pr diff*",
+          "gh search issues*", "gh search prs*",
+          "git status*", "git log*", "git diff*", "git show*", "git blame*",
+          "git fetch*", "git branch*", "git rev-parse*", "git merge-base*",
+          "git ls-files*", "git ls-tree*", "git tag*",
+          "cfn-schemas generate*", "cfn-schemas assemble*", "cfn-schemas validate*", "cfn-schemas audit-patches*",
+          ".venv/bin/cfn-schemas*",
+          "ls*", "cat*", "head*", "tail*", "wc*", "grep*", "find*", "rg*",
+          "diff*", "which*", "pwd", "date*", "echo*", "file*",
+          "mkdir -p /tmp/*"
+        ]
+      },
+      {
+        "capability": "shell",
+        "effect": "deny",
+        "match": [
+          "*git push*", "*git reset --hard*", "*git clean*", "*git commit*",
+          "*gh issue comment*", "*gh issue edit*", "*gh issue close*",
+          "*gh issue create*", "*gh issue reopen*",
+          "*gh pr create*", "*gh pr merge*", "*gh pr review*", "*gh pr comment*",
+          "*gh pr edit*", "*gh pr close*",
+          "*gh api*", "*gh label*",
+          "*aws *", "*rm -rf*", "*sudo*"
+        ]
+      }
+    ]
+  },
+  "toolsSettings": {
+    "execute_bash": {
+      "autoAllowReadonly": true,
+      "allowedCommands": [
+        "^gh (issue|pr) (view|list|diff)( [^;|&`$]+)?$",
+        "^gh search (issues|prs)( [^;|&`$]+)?$",
+        "^git (-P |--no-pager )*(status|log|diff|show|blame|branch|rev-parse|merge-base|ls-files|ls-tree|fetch|tag)( [^;|&`$]+)?$",
+        "^(\\.venv/bin/)?cfn-schemas (generate|assemble|validate|audit-patches)( [^;|&`$]+)?$",
+        "^(ls|cat|head|tail|wc|grep|find|rg|diff|which|pwd|date|echo|file)( [^;|&`$]+)?$",
+        "^mkdir -p /tmp/[^;|&`$]+$"
+      ],
+      "deniedCommands": [
+        ".*git push.*", ".*git reset --hard.*", ".*git clean.*", ".*git commit.*",
+        ".*gh issue (comment|edit|close|create|reopen).*",
+        ".*gh pr (create|merge|review|comment|edit|close).*",
+        ".*gh (api|label).*",
+        ".*aws .*", ".*rm -rf.*", ".*sudo.*"
+      ]
+    },
+    "fs_write": {
+      "allowedPaths": ["/tmp/**"]
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/**/*.md"
+  ]
+}

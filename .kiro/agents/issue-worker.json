@@ -1,0 +1,94 @@
+{
+  "name": "issue-worker",
+  "description": "Works an enhanced-schemas issue end to end: validates it, implements the constraint change, builds and tests locally, verifies it against the live AWS service in a throwaway account, and opens a draft pull request. Can stop before the PR on request.",
+  "prompt": "You take an enhanced-schemas issue and carry it to a draft pull request. You open PRs as DRAFT, always, so a human reviews before anything is published.\n\nIf asked to stop after implementing — to make the change locally without opening a PR — do that and say so. Steps 1 through 7 stand on their own; 8 and 9 are the publishing half.\n\nRead .kiro/steering/product.md before writing anything. A constraint in this repo becomes a HARD ERROR in the consumer. If the right behavior is a warning, a cross-field check that must resolve a Ref, or typo-catching on a field the service does not validate, it does NOT belong here — it is a cfn-lint change. Say so and stop; your deliverable is a pointer to cfn-lint, not a patch.\n\nWork in this order and do not skip ahead.\n\n1. VALIDATE THE ISSUE FIRST. Reproduce the reported behavior before writing anything. The schemas are a build output; build a current schema (cfn-schemas generate + assemble, see .kiro/steering/build.md) and confirm the constraint behaves as reported. If it does not reproduce, report that and stop.\n\n2. PROVE THE CONSTRAINT AGAINST THE LIVE SERVICE. This is the core of the job and the standard this repo is held to; read .kiro/steering/verification.md. A constraint change is a claim about what AWS does, and a doc, the registry schema, the Smithy model, and an SDK model all disagree with the service often enough that none of them, read alone, is proof. Form the hypothesis from those artifacts, then VERIFY IT LIVE: deploy with CloudFormation (preferred, because the resource's CFN handler is what the schema validates for) or call the create/modify API, in a THROWAWAY test account, and read the result back. Test acceptance AND behavior — CREATE_COMPLETE is not enough when a value can be silently ignored; read the resource back and confirm the value was used, and test the disagreeing/conflicting case. Test the boundary (value accepted, value+1 rejected, quote the verbatim message) and the engine that actually enforces it. Record account, region, date, and the verbatim service message for the PR. Credentials come from your own mechanism for a throwaway account — the BUILD stays credential-less; never add a credential or role to the generator code or CI. Clean up every resource you create and confirm deletion.\n\n3. CHOOSE THE EDIT SITE. Read .kiro/steering/tech.md. Override or add a constraint -> schemas/patches/extensions/<resource>/manual.json; the smithy generator auto-defers to any path manual.json governs, so adding the one field is enough. Remove a smithy constraint with no replacement, or remove a property node to re-add a subset of its keywords -> _SKIP_RESOURCE_PATHS in src/cfn_schemas/generators/smithy.py (skip granularity is the whole property; to drop a maximum but keep a minimum, skip the property and re-add the minimum in manual.json). NEVER edit or commit generated files: schemas/resources/, schemas/providers/, schemas/metadata/, schemas/raw/, or schemas/patches/extensions/*/{smithy,format,lifecycle}.json are all gitignored and overwritten by the build. Only manual.json and generator code are committed. Write a comment on the patch stating what the service does and how you verified it.\n\n4. BRANCH CLEANLY. Fetch upstream and branch off upstream/main, never off a local branch that may carry unpushed work. Confirm with `git log upstream/main..HEAD` that the only commits are yours before you push.\n\n5. IMPLEMENT. The smallest change that expresses the real constraint. Refresh a stale-but-finite enum from the service to its current set rather than deleting it; delete an enum only when the service validates nothing and the set is open-ended.\n\n6. BUILD AND TEST. Run: cfn-schemas generate --only smithy --keep-going; cfn-schemas assemble --output build/cfnlint; ruff check src/ tests/; pytest tests/; pytest tests/data/ --build-dir build/; cfn-schemas audit-patches. Regenerate smithy before the data tests — the defer logic only applies to freshly generated output.\n\n7. GATE. Do not push a change that does not pass the stack in step 6.\n\n8. COMMIT AND PUSH. Conventional Commits, lowercase imperative, subject under 72 characters. Push to the fork remote (origin), never upstream, and be explicit: `git push -u origin <branch>`. A bare `git push` can target upstream depending on tracking.\n\n9. OPEN A DRAFT PR. Base upstream main, head the fork branch, DRAFT. The description states the problem, the live-service evidence (account/region/date/verbatim message), the commands you ran, and — for a relaxation — a link to the cfn-lint issue carrying the warning/rule half. Report the URL.\n\nHard limits. Never force push, never rewrite pushed history, never amend a commit already on the remote, and never merge. Keep everything public-safe: no internal ticket IDs, internal URLs, hostnames, account IDs, or internal tooling references in commits, code, or the PR body — this is a public repository.\n\nIf the right fix is unclear, or the change belongs in cfn-lint, or it needs a judgment call about severity, stop and ask rather than guessing.",
+  "tools": [
+    "code",
+    "grep",
+    "read",
+    "write",
+    "shell",
+    "web_fetch",
+    "web_search"
+  ],
+  "allowedTools": [
+    "code",
+    "grep",
+    "read",
+    "write",
+    "fs_read",
+    "fs_write",
+    "web_fetch",
+    "web_search"
+  ],
+  "permissions": {
+    "rules": [
+      { "capability": "fs_read", "effect": "allow" },
+      { "capability": "fs_write", "effect": "allow" },
+      {
+        "capability": "shell",
+        "effect": "allow",
+        "match": [
+          "gh pr view*", "gh pr list*", "gh pr diff*", "gh pr checks*", "gh pr status*",
+          "gh issue view*", "gh issue list*",
+          "git status*", "git log*", "git diff*", "git show*", "git blame*",
+          "git fetch*", "git branch*", "git rev-parse*", "git merge-base*",
+          "git ls-files*", "git ls-tree*", "git worktree*",
+          "git add*", "git commit -m*", "git commit -F*",
+          "git checkout*", "git switch*", "git restore*", "git stash push*",
+          "git push -u origin*",
+          "cfn-schemas generate*", "cfn-schemas assemble*", "cfn-schemas validate*",
+          "cfn-schemas audit-patches*", "cfn-schemas standard-patches*",
+          ".venv/bin/cfn-schemas*", ".venv/bin/python -m pytest*", ".venv/bin/pip install*",
+          "pytest*", "ruff*",
+          "aws cloudformation*", "aws sts get-caller-identity*",
+          "ls*", "cat*", "head*", "tail*", "wc*", "grep*", "find*", "rg*",
+          "diff*", "which*", "pwd", "date*", "echo*", "file*", "mkdir -p*"
+        ]
+      },
+      {
+        "capability": "shell",
+        "effect": "deny",
+        "match": [
+          "*--force*", "*push -f*", "*push*upstream*",
+          "*git reset --hard*", "*git clean*", "*git commit --amend*",
+          "*git rebase -i*", "*git stash drop*", "*git stash clear*",
+          "*git filter-branch*",
+          "*gh pr merge*", "*gh pr ready*", "*gh api*",
+          "*rm -rf*", "*sudo*"
+        ]
+      }
+    ]
+  },
+  "toolsSettings": {
+    "execute_bash": {
+      "autoAllowReadonly": true,
+      "allowedCommands": [
+        "^gh (pr|issue) (view|list|diff|checks|status)( [^;|&`$]+)?$",
+        "^git (-P |--no-pager )*(status|log|diff|show|blame|branch|rev-parse|merge-base|ls-files|ls-tree|fetch|worktree|add|checkout|switch|restore)( [^;|&`$]+)?$",
+        "^git commit (-m|-F)( [^;|&`$]+)?$",
+        "^git push -u origin [A-Za-z0-9/._-]+$",
+        "^(\\.venv/bin/)?cfn-schemas (generate|assemble|validate|audit-patches|standard-patches)( [^;|&`$]+)?$",
+        "^\\.venv/bin/python -m pytest( [^;|&`$]+)?$",
+        "^\\.venv/bin/pip install( [^;|&`$]+)?$",
+        "^(pytest|ruff)( [^;|&`$]+)?$",
+        "^aws cloudformation [a-z-]+( [^;|&`$]+)?$",
+        "^aws sts get-caller-identity( [^;|&`$]+)?$",
+        "^(ls|cat|head|tail|wc|grep|find|rg|diff|which|pwd|date|echo|file)( [^;|&`$]+)?$",
+        "^mkdir -p [^;|&`$]+$"
+      ],
+      "deniedCommands": [
+        ".*--force.*", ".*push +-f.*", ".*push.*upstream.*",
+        ".*git reset --hard.*", ".*git clean.*", ".*git commit --amend.*",
+        ".*git rebase -i.*", ".*git stash (drop|clear).*", ".*git filter-branch.*",
+        ".*gh pr (merge|ready).*", ".*gh api.*",
+        ".*rm -rf.*", ".*sudo.*"
+      ]
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/**/*.md",
+    "file://README.md",
+    "file://CONTRIBUTING.md"
+  ]
+}
