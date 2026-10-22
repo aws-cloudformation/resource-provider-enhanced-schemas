@@ -12,7 +12,7 @@
  {
   "op": "add",
   "path": "/properties/IdleDisconnectTimeoutInSeconds/maximum",
-  "value": 3600
+  "value": 36000
  },
  {
   "op": "add",
@@ -22,7 +22,7 @@
  {
   "op": "add",
   "path": "/properties/MaxUserDurationInSeconds/maximum",
-  "value": 360000
+  "value": 432000
  },
  {
   "op": "add",

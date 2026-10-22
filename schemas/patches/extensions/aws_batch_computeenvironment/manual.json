@@ -1,0 +1,15 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/ComputeResources/properties/AllocationStrategy/enumCaseInsensitive",
+  "value": [
+   "best_fit",
+   "best_fit_progressive",
+   "best_fit_progressive_ordered",
+   "flexible",
+   "spot_capacity_optimized",
+   "spot_capacity_optimized_prioritized",
+   "spot_price_capacity_optimized"
+  ]
+ }
+]

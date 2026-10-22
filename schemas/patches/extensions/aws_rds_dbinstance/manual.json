@@ -5,9 +5,7 @@
   "value": {
    "SourceDBInstanceIdentifier": [
     "CharacterSetName",
-    "MasterUserPassword",
-    "MasterUsername",
-    "StorageEncrypted"
+    "MasterUserPassword"
    ]
   }
  },

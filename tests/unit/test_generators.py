@@ -126,20 +126,20 @@ class TestTranslateCustomKeywords:
         schema = {"properties": {"A": {}, "B": {}}, "requiredXor": ["A", "B"]}
         result = translate_custom_keywords(schema)
         assert "requiredXor" not in result
-        assert result["allOf"] == [{"oneOf": [{"required": ["A"]}, {"required": ["B"]}]}]
+        assert result["allOf"] == [{"oneOf": [{"required": ["A"], "properties": {"A": {"minItems": 1}}}, {"required": ["B"], "properties": {"B": {"minItems": 1}}}]}]
 
     def test_required_or(self):
         schema = {"properties": {"A": {}, "B": {}}, "requiredOr": ["A", "B"]}
         result = translate_custom_keywords(schema)
         assert "requiredOr" not in result
-        assert result["allOf"] == [{"anyOf": [{"required": ["A"]}, {"required": ["B"]}]}]
+        assert result["allOf"] == [{"anyOf": [{"required": ["A"], "properties": {"A": {"minItems": 1}}}, {"required": ["B"], "properties": {"B": {"minItems": 1}}}]}]
 
     def test_dependent_excluded(self):
         schema = {"properties": {"A": {}, "B": {}}, "dependentExcluded": {"A": ["B"]}}
         result = translate_custom_keywords(schema)
         assert "dependentExcluded" not in result
         assert result["allOf"] == [
-            {"dependencies": {"A": {"not": {"anyOf": [{"required": ["B"]}]}}}}
+            {"allOf": [{"anyOf": [{"not": {"required": ["A"], "properties": {"A": {"minItems": 1}}}}, {"not": {"anyOf": [{"required": ["B"], "properties": {"B": {"minItems": 1}}}]}}]}]}
         ]
 
     def test_nested_translation(self):
@@ -150,7 +150,7 @@ class TestTranslateCustomKeywords:
         result = translate_custom_keywords(schema)
         assert "requiredXor" not in result["definitions"]["Inner"]
         assert result["definitions"]["Inner"]["allOf"] == [
-            {"oneOf": [{"required": ["A"]}, {"required": ["B"]}]}
+            {"oneOf": [{"required": ["A"], "properties": {"A": {"minItems": 1}}}, {"required": ["B"], "properties": {"B": {"minItems": 1}}}]}
         ]
 
     def test_preserves_existing_allof(self):
@@ -202,7 +202,7 @@ class TestTranslatePatchOp:
         assert translate_patch_op(op) == {
             "op": "add",
             "path": "/oneOf",
-            "value": [{"required": ["A"]}, {"required": ["B"]}],
+            "value": [{"required": ["A"], "properties": {"A": {"minItems": 1}}}, {"required": ["B"], "properties": {"B": {"minItems": 1}}}],
         }
 
     def test_required_or_path(self):
@@ -210,15 +210,15 @@ class TestTranslatePatchOp:
         assert translate_patch_op(op) == {
             "op": "add",
             "path": "/anyOf",
-            "value": [{"required": ["A"]}, {"required": ["B"]}],
+            "value": [{"required": ["A"], "properties": {"A": {"minItems": 1}}}, {"required": ["B"], "properties": {"B": {"minItems": 1}}}],
         }
 
     def test_dependent_excluded_path(self):
         op = {"op": "add", "path": "/dependentExcluded", "value": {"A": ["B"]}}
         assert translate_patch_op(op) == {
             "op": "add",
-            "path": "/dependencies",
-            "value": {"A": {"not": {"anyOf": [{"required": ["B"]}]}}},
+            "path": "/allOf",
+            "value": [{"anyOf": [{"not": {"required": ["A"], "properties": {"A": {"minItems": 1}}}}, {"not": {"anyOf": [{"required": ["B"], "properties": {"B": {"minItems": 1}}}]}}]}],
         }
 
     def test_enum_case_insensitive_nested_path(self):
@@ -253,7 +253,7 @@ class TestTranslatePatchOp:
         std = [translate_patch_op(o) for o in raw]
         result = apply_patches(base, std)
         assert "requiredXor" not in result
-        assert result["oneOf"] == [{"required": ["A"]}, {"required": ["B"]}]
+        assert result["oneOf"] == [{"required": ["A"], "properties": {"A": {"minItems": 1}}}, {"required": ["B"], "properties": {"B": {"minItems": 1}}}]
 
 
 class TestLifecycleGenerator:

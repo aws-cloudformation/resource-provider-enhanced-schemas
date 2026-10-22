@@ -102,23 +102,45 @@ def assemble_schema(
     return schema
 
 
+# A property set to an empty array is dropped by CloudFormation before the
+# request reaches the service, so an empty list must not count as "present" for
+# our presence-based keywords (requiredXor/requiredOr/dependentExcluded). everit
+# has no such notion, so we bake it into the translated (standard) form:
+# "present" becomes "present and non-empty". The guard is type-agnostic --
+# minItems only constrains arrays, so it is a no-op for scalar properties and
+# only excludes [] for list properties. This mirrors the cfn-lint engine change
+# tracked in aws-cloudformation/cfn-lint#4789.
+def _present(name: str) -> dict[str, Any]:
+    return {"required": [name], "properties": {name: {"minItems": 1}}}
+
+
 def _translate_required_xor(properties: list[str]) -> dict[str, Any]:
-    return {"oneOf": [{"required": [p]} for p in properties]}
+    return {"oneOf": [_present(p) for p in properties]}
 
 
 def _translate_required_or(properties: list[str]) -> dict[str, Any]:
-    return {"anyOf": [{"required": [p]} for p in properties]}
+    return {"anyOf": [_present(p) for p in properties]}
 
 
 def _translate_dependent_excluded(
     properties: dict[str, list[str]],
 ) -> dict[str, Any]:
-    dependencies: dict[str, Any] = {}
+    # "if <prop> is present (non-empty), none of <exclusions> may be present
+    # (non-empty)". dependencies{} triggers on key presence regardless of value
+    # and so cannot express the empty-array guard on the trigger; express it
+    # instead as allOf[ anyOf[ not(prop), not(any exclusion) ] ] (if/then is not
+    # permitted in these schemas).
+    clauses: list[dict[str, Any]] = []
     for prop, exclusions in properties.items():
-        dependencies[prop] = {
-            "not": {"anyOf": [{"required": [e]} for e in exclusions]}
-        }
-    return {"dependencies": dependencies}
+        clauses.append(
+            {
+                "anyOf": [
+                    {"not": _present(prop)},
+                    {"not": {"anyOf": [_present(e) for e in exclusions]}},
+                ]
+            }
+        )
+    return {"allOf": clauses}
 
 
 def _translate_enum_case_insensitive(values: list[str]) -> dict[str, Any]:

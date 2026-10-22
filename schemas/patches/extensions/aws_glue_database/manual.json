@@ -1,0 +1,12 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/DatabaseInput/properties/LocationUri/minLength",
+  "value": 0
+ },
+ {
+  "op": "add",
+  "path": "/definitions/DatabaseInput/properties/Name/minLength",
+  "value": 0
+ }
+]
