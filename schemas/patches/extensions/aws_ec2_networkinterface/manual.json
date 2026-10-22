@@ -1,22 +1,26 @@
 [
  {
   "op": "add",
-  "path": "/not",
-  "value": {
-   "properties": {
-    "Ipv6AddressCount": {
-     "minimum": 1,
-     "type": "integer"
-    },
-    "Ipv6Addresses": {
-     "minItems": 1,
-     "type": "array"
+  "path": "/allOf",
+  "value": [
+   {
+    "not": {
+     "properties": {
+      "Ipv6AddressCount": {
+       "minimum": 1,
+       "type": "integer"
+      },
+      "Ipv6Addresses": {
+       "minItems": 1,
+       "type": "array"
+      }
+     },
+     "required": [
+      "Ipv6AddressCount",
+      "Ipv6Addresses"
+     ]
     }
-   },
-   "required": [
-    "Ipv6AddressCount",
-    "Ipv6Addresses"
-   ]
-  }
+   }
+  ]
  }
 ]
