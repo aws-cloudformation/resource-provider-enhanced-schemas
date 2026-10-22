@@ -1,0 +1,17 @@
+[
+ {
+  "op": "add",
+  "path": "/definitions/HadoopJarStepConfig/properties/Args/uniqueItems",
+  "value": false
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ScriptBootstrapActionConfig/properties/Args/uniqueItems",
+  "value": false
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Application/properties/Args/uniqueItems",
+  "value": false
+ }
+]
