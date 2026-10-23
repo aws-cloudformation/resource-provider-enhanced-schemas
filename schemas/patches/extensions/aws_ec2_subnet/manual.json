@@ -18,6 +18,18 @@
    ],
    "AvailabilityZoneId": [
     "AvailabilityZone"
+   ],
+   "CidrBlock": [
+    "Ipv4NetmaskLength"
+   ],
+   "Ipv4NetmaskLength": [
+    "CidrBlock"
+   ],
+   "Ipv6CidrBlock": [
+    "Ipv6NetmaskLength"
+   ],
+   "Ipv6NetmaskLength": [
+    "Ipv6CidrBlock"
    ]
   }
  },
