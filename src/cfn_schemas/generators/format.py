@@ -131,6 +131,15 @@ _ARN_MAPPINGS: list[tuple[list[str], str, set[str]]] = [
 
 _ROLE_ARN_SUFFIXES = ("RoleArn", "RoleARN")
 
+# A role reference supplied as a *name* rather than an ARN, for the few
+# properties that accept either (see _MANUAL_PATCHES). IAM documents a role
+# name as [\w+=,.@-]{1,64} and a path as (\u002F)|(\u002F[\u0021-\u007E]+\u002F);
+# the optional leading group here is that path, because the accepting APIs take
+# "path + name" (role `bar` at path `/foo/` is given as `/foo/bar`). \w is
+# spelled out in ASCII on purpose: it is Unicode-aware in Python but ASCII-only
+# in ECMA-262, and these schemas are consumed by both.
+_ROLE_NAME_PATTERN = r"^(/[!-~]+/)?[a-zA-Z0-9_+=,.@-]{1,64}$"
+
 # Prefix exclusions for ARN mappings
 _ARN_PREFIX_EXCLUSIONS: dict[str, list[str]] = {
     "AWS::SNS::Topic.Arn": ["AWS::MSK::", "AWS::FMS::"],
@@ -361,6 +370,52 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
         _fmt(
             "/definitions/RegisteredMCPServerSigV4Details/properties/RoleArn/format",
             "AWS::IAM::Role.Arn",
+        ),
+    ],
+    # The four properties below hold an IAM role reference but are named
+    # *Role, so the name conventions above miss them. Handled per property
+    # rather than by name or suffix: `Role` and `ServiceRole` are far too
+    # common to match across every resource type.
+    #
+    # ARN only -- RequestSpotFleet rejects a bare name with "Parameter:
+    # SpotFleetRequestConfig.IamFleetRole is invalid.<name> does not start
+    # with arn" (us-east-1, 2026-10-26).
+    "AWS::EC2::SpotFleet": [
+        _fmt(
+            "/definitions/SpotFleetRequestConfigData/properties/IamFleetRole/format",
+            "AWS::IAM::Role.Arn",
+        ),
+    ],
+    # ARN only -- PutBucketReplication rejects a bare name with "Invalid Role
+    # specified in replication configuration", and accepts an ARN naming a
+    # role that does not exist, so it validates ARN shape (us-east-1,
+    # 2026-10-26).
+    "AWS::S3::Bucket": [
+        _fmt(
+            "/definitions/ReplicationConfiguration/properties/Role/format",
+            "AWS::IAM::Role.Arn",
+        ),
+    ],
+    # ARN or role name. Batch's API model documents the name form for
+    # ServiceRole: "If your specified role has a path other than /, then you
+    # must specify either the full role ARN (recommended) or prefix the role
+    # name with the path." CreateComputeEnvironment accepted a bare name for
+    # SpotIamFleetRole (us-east-1, 2026-10-26), so an ARN-only format would
+    # be a false positive on both.
+    "AWS::Batch::ComputeEnvironment": [
+        _fmt(
+            "/properties/ServiceRole/anyOf",
+            [
+                {"format": "AWS::IAM::Role.Arn"},
+                {"pattern": _ROLE_NAME_PATTERN},
+            ],
+        ),
+        _fmt(
+            "/definitions/ComputeResources/properties/SpotIamFleetRole/anyOf",
+            [
+                {"format": "AWS::IAM::Role.Arn"},
+                {"pattern": _ROLE_NAME_PATTERN},
+            ],
         ),
     ],
 }

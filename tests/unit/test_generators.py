@@ -16,6 +16,7 @@ from cfn_schemas.assembly import (
 )
 from cfn_schemas.generators import GENERATORS
 from cfn_schemas.generators.base import BaseGenerator
+from cfn_schemas.generators.format import _ROLE_NAME_PATTERN
 from cfn_schemas.resolver import RefResolutionError, RefResolver
 
 
@@ -416,6 +417,109 @@ class TestFormatGenerator:
         )
         assert "/definitions/PassThroughProp/format" not in patches
         assert patches["/definitions/SharedRole/format"] == "AWS::IAM::Role.Arn"
+
+    def test_arn_only_role_properties_get_plain_format(self, tmp_path):
+        """*Role properties that accept an ARN only get a plain format."""
+        spot = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::EC2::SpotFleet",
+                "properties": {},
+                "definitions": {
+                    "SpotFleetRequestConfigData": {
+                        "type": "object",
+                        "properties": {"IamFleetRole": {"type": "string"}},
+                    }
+                },
+            },
+        )
+        assert (
+            spot[
+                "/definitions/SpotFleetRequestConfigData"
+                "/properties/IamFleetRole/format"
+            ]
+            == "AWS::IAM::Role.Arn"
+        )
+
+        bucket = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::S3::Bucket",
+                "properties": {},
+                "definitions": {
+                    "ReplicationConfiguration": {
+                        "type": "object",
+                        "properties": {"Role": {"type": "string"}},
+                    }
+                },
+            },
+        )
+        assert (
+            bucket["/definitions/ReplicationConfiguration/properties/Role/format"]
+            == "AWS::IAM::Role.Arn"
+        )
+
+    def test_batch_role_properties_accept_arn_or_name(self, tmp_path):
+        """Batch accepts an ARN or a role name, so these get an anyOf."""
+        batch = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::Batch::ComputeEnvironment",
+                "properties": {"ServiceRole": {"type": "string"}},
+                "definitions": {
+                    "ComputeResources": {
+                        "type": "object",
+                        "properties": {"SpotIamFleetRole": {"type": "string"}},
+                    }
+                },
+            },
+        )
+        expected = [
+            {"format": "AWS::IAM::Role.Arn"},
+            {"pattern": _ROLE_NAME_PATTERN},
+        ]
+        assert batch["/properties/ServiceRole/anyOf"] == expected
+        assert (
+            batch[
+                "/definitions/ComputeResources/properties/SpotIamFleetRole/anyOf"
+            ]
+            == expected
+        )
+        # an ARN-only format must NOT be assigned alongside the anyOf
+        assert "/properties/ServiceRole/format" not in batch
+
+    @pytest.mark.parametrize(
+        "value,accepted",
+        [
+            # a role ARN, with and without a path -- matched by the format branch
+            ("arn:aws:iam::123456789012:role/AWSBatchServiceRole", True),
+            (
+                "arn:aws:iam::123456789012:role/service-role/AWSBatchServiceRole",
+                True,
+            ),
+            # a bare role name, and the path-prefixed form Batch documents
+            ("AWSBatchServiceRole", True),
+            ("/foo/bar", True),
+            # a malformed ARN must satisfy neither branch
+            ("arn:aws:iam::123456789012:notarole/x", False),
+            # no documented empty sentinel for these properties
+            ("", False),
+        ],
+    )
+    def test_role_name_pattern_table(self, value, accepted):
+        """The anyOf accepts exactly the documented ARN and name forms."""
+        # cfn-lint's AWS::IAM::Role.Arn format (rule E1156)
+        fmt = r"^arn:aws[a-zA-Z-]*:iam::\d{12}:role/.+$"
+        matched = bool(re.match(fmt, value)) or bool(
+            re.match(_ROLE_NAME_PATTERN, value)
+        )
+        assert matched is accepted
+
+    def test_role_name_pattern_matches_aws_documented_form(self):
+        """The literal pattern equals AWS's \\u-escaped IAM path/name spec."""
+        assert _ROLE_NAME_PATTERN == (
+            "^(\u002F[\u0021-\u007E]+\u002F)?[a-zA-Z0-9_+=,.@-]{1,64}$"
+        )
 
 
 class TestManualGenerator:
