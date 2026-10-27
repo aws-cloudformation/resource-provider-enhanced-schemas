@@ -363,40 +363,21 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
             "AWS::IAM::Role.Arn",
         ),
     ],
-    # The four properties below hold an IAM role reference but are named
-    # *Role, so the name conventions above miss them. Handled per property
-    # rather than by name or suffix: `Role` and `ServiceRole` are far too
-    # common to match across every resource type.
-    #
-    # ARN only -- RequestSpotFleet rejects a bare name with "Parameter:
-    # SpotFleetRequestConfig.IamFleetRole is invalid.<name> does not start
-    # with arn" (us-east-1, 2026-10-26).
+    # Named *Role but hold a role reference, so the name conventions above
+    # miss them; per-property because `Role`/`ServiceRole` are too common (#74)
     "AWS::EC2::SpotFleet": [
         _fmt(
             "/definitions/SpotFleetRequestConfigData/properties/IamFleetRole/format",
             "AWS::IAM::Role.Arn",
         ),
     ],
-    # ARN only -- PutBucketReplication rejects a bare name with "Invalid Role
-    # specified in replication configuration", and accepts an ARN naming a
-    # role that does not exist, so it validates ARN shape (us-east-1,
-    # 2026-10-26).
     "AWS::S3::Bucket": [
         _fmt(
             "/definitions/ReplicationConfiguration/properties/Role/format",
             "AWS::IAM::Role.Arn",
         ),
     ],
-    # ARN or role name. Batch's API model documents the name form for
-    # ServiceRole: "If your specified role has a path other than /, then you
-    # must specify either the full role ARN (recommended) or prefix the role
-    # name with the path." CreateComputeEnvironment accepted a bare name for
-    # SpotIamFleetRole (us-east-1, 2026-10-26), so an ARN-only format would
-    # be a false positive on both.
-    #
-    # The name branch is the named format rather than an inline regex: a
-    # format is a semantic concept a consumer can interpret, and it keeps the
-    # role-name expression in one place instead of restating IAM's spec here.
+    # ARN or role name; Batch documents the name form
     "AWS::Batch::ComputeEnvironment": [
         _fmt(
             "/properties/ServiceRole/anyOf",
