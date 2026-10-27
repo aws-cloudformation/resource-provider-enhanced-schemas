@@ -16,7 +16,6 @@ from cfn_schemas.assembly import (
 )
 from cfn_schemas.generators import GENERATORS
 from cfn_schemas.generators.base import BaseGenerator
-from cfn_schemas.generators.format import _ROLE_NAME_PATTERN
 from cfn_schemas.resolver import RefResolutionError, RefResolver
 
 
@@ -476,7 +475,7 @@ class TestFormatGenerator:
         )
         expected = [
             {"format": "AWS::IAM::Role.Arn"},
-            {"pattern": _ROLE_NAME_PATTERN},
+            {"format": "AWS::IAM::Role.Name"},
         ]
         assert batch["/properties/ServiceRole/anyOf"] == expected
         assert (
@@ -487,39 +486,8 @@ class TestFormatGenerator:
         )
         # an ARN-only format must NOT be assigned alongside the anyOf
         assert "/properties/ServiceRole/format" not in batch
-
-    @pytest.mark.parametrize(
-        "value,accepted",
-        [
-            # a role ARN, with and without a path -- matched by the format branch
-            ("arn:aws:iam::123456789012:role/AWSBatchServiceRole", True),
-            (
-                "arn:aws:iam::123456789012:role/service-role/AWSBatchServiceRole",
-                True,
-            ),
-            # a bare role name, and the path-prefixed form Batch documents
-            ("AWSBatchServiceRole", True),
-            ("/foo/bar", True),
-            # a malformed ARN must satisfy neither branch
-            ("arn:aws:iam::123456789012:notarole/x", False),
-            # no documented empty sentinel for these properties
-            ("", False),
-        ],
-    )
-    def test_role_name_pattern_table(self, value, accepted):
-        """The anyOf accepts exactly the documented ARN and name forms."""
-        # cfn-lint's AWS::IAM::Role.Arn format (rule E1156)
-        fmt = r"^arn:aws[a-zA-Z-]*:iam::\d{12}:role/.+$"
-        matched = bool(re.match(fmt, value)) or bool(
-            re.match(_ROLE_NAME_PATTERN, value)
-        )
-        assert matched is accepted
-
-    def test_role_name_pattern_matches_aws_documented_form(self):
-        """The literal pattern equals AWS's \\u-escaped IAM path/name spec."""
-        assert _ROLE_NAME_PATTERN == (
-            "^(\u002F[\u0021-\u007E]+\u002F)?[a-zA-Z0-9_+=,.@-]{1,64}$"
-        )
+        # the name branch is a named format, never an inline regex
+        assert all("pattern" not in branch for branch in expected)
 
 
 class TestManualGenerator:

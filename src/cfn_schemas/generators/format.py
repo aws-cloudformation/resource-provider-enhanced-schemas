@@ -131,15 +131,6 @@ _ARN_MAPPINGS: list[tuple[list[str], str, set[str]]] = [
 
 _ROLE_ARN_SUFFIXES = ("RoleArn", "RoleARN")
 
-# A role reference supplied as a *name* rather than an ARN, for the few
-# properties that accept either (see _MANUAL_PATCHES). IAM documents a role
-# name as [\w+=,.@-]{1,64} and a path as (\u002F)|(\u002F[\u0021-\u007E]+\u002F);
-# the optional leading group here is that path, because the accepting APIs take
-# "path + name" (role `bar` at path `/foo/` is given as `/foo/bar`). \w is
-# spelled out in ASCII on purpose: it is Unicode-aware in Python but ASCII-only
-# in ECMA-262, and these schemas are consumed by both.
-_ROLE_NAME_PATTERN = r"^(/[!-~]+/)?[a-zA-Z0-9_+=,.@-]{1,64}$"
-
 # Prefix exclusions for ARN mappings
 _ARN_PREFIX_EXCLUSIONS: dict[str, list[str]] = {
     "AWS::SNS::Topic.Arn": ["AWS::MSK::", "AWS::FMS::"],
@@ -402,19 +393,23 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
     # name with the path." CreateComputeEnvironment accepted a bare name for
     # SpotIamFleetRole (us-east-1, 2026-10-26), so an ARN-only format would
     # be a false positive on both.
+    #
+    # The name branch is the named format rather than an inline regex: a
+    # format is a semantic concept a consumer can interpret, and it keeps the
+    # role-name expression in one place instead of restating IAM's spec here.
     "AWS::Batch::ComputeEnvironment": [
         _fmt(
             "/properties/ServiceRole/anyOf",
             [
                 {"format": "AWS::IAM::Role.Arn"},
-                {"pattern": _ROLE_NAME_PATTERN},
+                {"format": "AWS::IAM::Role.Name"},
             ],
         ),
         _fmt(
             "/definitions/ComputeResources/properties/SpotIamFleetRole/anyOf",
             [
                 {"format": "AWS::IAM::Role.Arn"},
-                {"pattern": _ROLE_NAME_PATTERN},
+                {"format": "AWS::IAM::Role.Name"},
             ],
         ),
     ],
