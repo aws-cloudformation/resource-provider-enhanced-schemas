@@ -417,6 +417,78 @@ class TestFormatGenerator:
         assert "/definitions/PassThroughProp/format" not in patches
         assert patches["/definitions/SharedRole/format"] == "AWS::IAM::Role.Arn"
 
+    def test_arn_only_role_properties_get_plain_format(self, tmp_path):
+        """*Role properties that accept an ARN only get a plain format."""
+        spot = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::EC2::SpotFleet",
+                "properties": {},
+                "definitions": {
+                    "SpotFleetRequestConfigData": {
+                        "type": "object",
+                        "properties": {"IamFleetRole": {"type": "string"}},
+                    }
+                },
+            },
+        )
+        assert (
+            spot[
+                "/definitions/SpotFleetRequestConfigData"
+                "/properties/IamFleetRole/format"
+            ]
+            == "AWS::IAM::Role.Arn"
+        )
+
+        bucket = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::S3::Bucket",
+                "properties": {},
+                "definitions": {
+                    "ReplicationConfiguration": {
+                        "type": "object",
+                        "properties": {"Role": {"type": "string"}},
+                    }
+                },
+            },
+        )
+        assert (
+            bucket["/definitions/ReplicationConfiguration/properties/Role/format"]
+            == "AWS::IAM::Role.Arn"
+        )
+
+    def test_batch_role_properties_accept_arn_or_name(self, tmp_path):
+        """Batch accepts an ARN or a role name, so these get an anyOf."""
+        batch = self._run_one(
+            tmp_path,
+            {
+                "typeName": "AWS::Batch::ComputeEnvironment",
+                "properties": {"ServiceRole": {"type": "string"}},
+                "definitions": {
+                    "ComputeResources": {
+                        "type": "object",
+                        "properties": {"SpotIamFleetRole": {"type": "string"}},
+                    }
+                },
+            },
+        )
+        expected = [
+            {"format": "AWS::IAM::Role.Arn"},
+            {"format": "AWS::IAM::Role.Name"},
+        ]
+        assert batch["/properties/ServiceRole/anyOf"] == expected
+        assert (
+            batch[
+                "/definitions/ComputeResources/properties/SpotIamFleetRole/anyOf"
+            ]
+            == expected
+        )
+        # an ARN-only format must NOT be assigned alongside the anyOf
+        assert "/properties/ServiceRole/format" not in batch
+        # the name branch is a named format, never an inline regex
+        assert all("pattern" not in branch for branch in expected)
+
 
 class TestManualGenerator:
     def test_validates_good_patches(self, tmp_path):

@@ -363,6 +363,37 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
             "AWS::IAM::Role.Arn",
         ),
     ],
+    # Named *Role but hold a role reference, so the name conventions above
+    # miss them; per-property because `Role`/`ServiceRole` are too common (#74)
+    "AWS::EC2::SpotFleet": [
+        _fmt(
+            "/definitions/SpotFleetRequestConfigData/properties/IamFleetRole/format",
+            "AWS::IAM::Role.Arn",
+        ),
+    ],
+    "AWS::S3::Bucket": [
+        _fmt(
+            "/definitions/ReplicationConfiguration/properties/Role/format",
+            "AWS::IAM::Role.Arn",
+        ),
+    ],
+    # ARN or role name; Batch documents the name form
+    "AWS::Batch::ComputeEnvironment": [
+        _fmt(
+            "/properties/ServiceRole/anyOf",
+            [
+                {"format": "AWS::IAM::Role.Arn"},
+                {"format": "AWS::IAM::Role.Name"},
+            ],
+        ),
+        _fmt(
+            "/definitions/ComputeResources/properties/SpotIamFleetRole/anyOf",
+            [
+                {"format": "AWS::IAM::Role.Arn"},
+                {"format": "AWS::IAM::Role.Name"},
+            ],
+        ),
+    ],
 }
 
 
