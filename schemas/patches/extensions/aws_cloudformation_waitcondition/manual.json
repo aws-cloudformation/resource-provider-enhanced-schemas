@@ -1,6 +1,11 @@
 [
  {
   "op": "add",
+  "path": "/properties/Data/type",
+  "value": "string"
+ },
+ {
+  "op": "add",
   "path": "/properties/Timeout/maximum",
   "value": 43200
  },
