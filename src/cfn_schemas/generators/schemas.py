@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 
 from cfn_schemas.generators import register
 from cfn_schemas.generators.base import BaseGenerator
+from cfn_schemas.utils.partitions import widen_partition_patterns
 
 logger = logging.getLogger(__name__)
 
@@ -307,6 +308,7 @@ class SchemasGenerator(BaseGenerator):
                         json.loads(json.dumps(spec)), type_name,
                     )
                     spec = _remove_empty_definitions(spec)
+                    spec = widen_partition_patterns(spec)
                     patched_schemas[type_name] = spec
         return raw_schemas, patched_schemas
 

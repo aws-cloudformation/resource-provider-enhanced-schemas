@@ -12,8 +12,8 @@ generated schemas as a build output, never as source.
 
 | Generator | Pulls from | Produces |
 |-----------|-----------|----------|
-| `schemas` | CloudFormation registry schema zip (public URL) | base per-resource schemas |
-| `smithy` | AWS API models (`api-models-aws` main.zip) + registry zip | enum / length / range / pattern patches |
+| `schemas` | CloudFormation registry schema zip (public URL) | base per-resource schemas (ARN partitions widened) |
+| `smithy` | AWS API models (`api-models-aws` main.zip) + registry zip | enum / length / range / pattern patches (ARN partitions widened) |
 | `format` | — | semantic formats from property names |
 | `lifecycle` | — | shutdown/sunset annotations |
 | `sam` | public SAM schema URL | `AWS::Serverless::*` schemas |

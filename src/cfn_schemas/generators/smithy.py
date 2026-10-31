@@ -22,6 +22,7 @@ import requests
 from cfn_schemas.generators import register
 from cfn_schemas.generators.base import BaseGenerator
 from cfn_schemas.resolver import RefResolutionError, RefResolver
+from cfn_schemas.utils.partitions import widen_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -450,7 +451,9 @@ class SmithyGenerator(BaseGenerator):
                             re.compile(value)
                         except Exception:
                             continue
-                        output.append({"op": "add", "path": f"{path}/pattern", "value": value})
+                        output.append(
+                            {"op": "add", "path": f"{path}/pattern", "value": widen_pattern(value)}
+                        )
                     elif field in ("min", "max"):
                         if shape_type == "string":
                             jf = "maxLength" if field == "max" else "minLength"
