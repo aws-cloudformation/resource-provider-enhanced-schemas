@@ -26,6 +26,17 @@ skip granularity is the **property**, not a single keyword: to drop only a `maxi
 keeping the `minimum`, skip the whole property in the list and re-add the `minimum` in
 `manual.json` (see the Synthetics `MemoryInMB` entry for the pattern).
 
+### ARN partitions are widened in code
+
+Registry and Smithy patterns often accept only some partitions (`arn:aws:`,
+`arn:(aws|aws-cn|aws-us-gov):`). The `schemas` and `smithy` generators pass every such pattern
+through `src/cfn_schemas/utils/partitions.py`, which adds an `aws[a-z\-]*` alternative to the
+partition segment, so a schema accepts the ARNs of every region it is served for. A pattern
+where a rewrite could change the meaning (a lookaround, a backreference, or a partition
+segment that crosses a top-level `|`, `$` or group boundary) is left alone and needs a
+`manual.json` fix. `manual.json` is applied after that and is **not** rewritten: write
+partitions in a manual pattern as `aws[a-z\-]*`, not as a list.
+
 ## Custom keywords and how they translate
 
 We ship two schema formats. The cfn-lint format keeps our custom keywords; the **standard**

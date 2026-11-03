@@ -17,6 +17,7 @@ from cfn_schemas.assembly import (
 from cfn_schemas.generators import GENERATORS
 from cfn_schemas.generators.base import BaseGenerator
 from cfn_schemas.resolver import RefResolutionError, RefResolver
+from cfn_schemas.utils.partitions import widen_partition_patterns, widen_pattern
 
 
 class TestGeneratorRegistry:
@@ -488,6 +489,148 @@ class TestFormatGenerator:
         assert "/properties/ServiceRole/format" not in batch
         # the name branch is a named format, never an inline regex
         assert all("pattern" not in branch for branch in expected)
+
+
+_PARTITION_ARNS = [
+    f"arn:{partition}:iam::123456789012:role/config"
+    for partition in (
+        "aws", "aws-cn", "aws-us-gov", "aws-iso", "aws-iso-b", "aws-iso-e",
+        "aws-iso-f", "aws-eusc",
+    )
+]
+
+
+class TestWidenPartitionPatterns:
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            "arn:(aws|aws-cn|aws-us-gov):iam::[0-9]*:(role)\\/.*",
+            "^arn:aws:iam::\\d{12}:role/.+$",
+            "arn:aws(|-cn|-us-gov):iam::[0-9]*:role/.*",
+            "arn:((aws)|(aws-cn)|(aws-us-gov)):iam::\\d{12}:role/.*",
+            "^arn:(aws|aws-us-gov|aws-cn|aws-iso|aws-iso-b):iam::\\d{12}:role/.*$",
+        ],
+    )
+    def test_arn_accepts_every_partition(self, pattern):
+        widened = re.compile(widen_pattern(pattern))
+        for arn in _PARTITION_ARNS:
+            assert widened.search(arn), (pattern, arn)
+        assert not widened.search("arn:azure:iam::123456789012:role/config")
+
+    def test_keeps_the_original_alternatives(self):
+        assert (
+            widen_pattern("arn:(aws|aws-cn|aws-us-gov):iam::")
+            == "arn:(aws|aws-cn|aws-us-gov|aws[a-z\\-]*):iam::"
+        )
+        assert widen_pattern("arn:aws(-cn)?:iam::") == "arn:(?:aws(-cn)?|aws[a-z\\-]*):iam::"
+        assert widen_pattern("^arn:aws") == "^arn:aws[a-z\\-]*"
+
+    def test_character_classes_do_not_end_the_partition(self):
+        assert (
+            widen_pattern("arn:(aws|aws[)(]cn):iam::")
+            == "arn:(aws|aws[)(]cn|aws[a-z\\-]*):iam::"
+        )
+        assert widen_pattern("arn:aws[:]?:iam::") == "arn:(?:aws[:]?|aws[a-z\\-]*):iam::"
+
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            # already accepts every partition
+            "arn:aws[a-z\\-]*:iam::",
+            "arn:aws(-[a-z]+)*:iam::",
+            "arn:(aws|aws-us-gov|aws-cn|aws-iso|aws-iso-b)(-[a-z]+)?:airflow:",
+            "arn:aws.*",
+            "arn:.+:iam::",
+            # contains a lookaround, a backreference, or a partition crossing | $ or )
+            "^(?!arn:aws:).+$",
+            "^(?<!x)arn:aws:iam::",
+            "^arn:aws|foo:bar$",
+            "^(?:arn:aws|arn:aws-cn:s3):x$",
+            "^arn:aws$",
+            "^(\\d)\\1:arn:aws:",
+        ],
+    )
+    def test_leaves_alone(self, pattern):
+        assert widen_pattern(pattern) == pattern
+
+    @pytest.mark.parametrize(
+        "pattern",
+        ["arn:(aws|aws-cn):iam::\\d{12}:role/x|arn:aws:s3:::b", "^arn:(aws|arn:aws:x):s3$"],
+    )
+    def test_idempotent(self, pattern):
+        once = widen_pattern(pattern)
+        assert widen_pattern(once) == once
+
+    def test_nested_arn_widens_the_outer_segment(self):
+        assert (
+            widen_pattern("^arn:(aws|arn:aws:x):s3$")
+            == "^arn:(aws|arn:aws:x|aws[a-z\\-]*):s3$"
+        )
+
+    def test_applied_to_nested_patterns_only(self):
+        schema = {
+            "properties": {
+                "RoleArn": {"type": "string", "pattern": "^arn:aws:iam::"},
+                "pattern": {"type": "string", "description": "arn:aws:"},
+            },
+            "definitions": {"X": {"items": [{"pattern": "arn:aws:s3:::"}]}},
+        }
+        widen_partition_patterns(schema)
+        assert schema["properties"]["RoleArn"]["pattern"] == "^arn:aws[a-z\\-]*:iam::"
+        assert schema["properties"]["pattern"]["description"] == "arn:aws:"
+        assert schema["definitions"]["X"]["items"][0]["pattern"] == "arn:aws[a-z\\-]*:s3:::"
+
+    def test_registry_schemas_are_widened_when_parsed(self, tmp_path):
+        """The schemas generator widens each downloaded schema; the raw copy is kept as is."""
+        import io
+        import zipfile
+
+        from cfn_schemas.generators.schemas import SchemasGenerator
+
+        schema = {
+            "typeName": "AWS::Config::ConfigurationRecorder",
+            "properties": {"RoleARN": {"type": "string", "pattern": "arn:aws:iam::"}},
+        }
+        data = io.BytesIO()
+        with zipfile.ZipFile(data, "w") as zf:
+            zf.writestr("aws-config-configurationrecorder.json", json.dumps(schema))
+        gen = SchemasGenerator(schemas_dir=tmp_path / "schemas")
+        raw, patched = gen._parse_schema_zip(data.getvalue())
+        rt = "AWS::Config::ConfigurationRecorder"
+        assert raw[rt]["properties"]["RoleARN"]["pattern"] == "arn:aws:iam::"
+        assert patched[rt]["properties"]["RoleARN"]["pattern"] == "arn:aws[a-z\\-]*:iam::"
+
+    def test_smithy_patterns_are_widened(self, tmp_path):
+        """The smithy generator widens each pattern it emits."""
+        from cfn_schemas.generators.smithy import Patch, SmithyGenerator
+
+        schema_dir = tmp_path / "registry"
+        schema_dir.mkdir()
+        (schema_dir / "aws-config-configurationrecorder.json").write_text(json.dumps({
+            "typeName": "AWS::Config::ConfigurationRecorder",
+            "properties": {"RoleARN": {"type": "string"}},
+        }))
+        model = tmp_path / "models" / "config" / "service" / "2014-11-12"
+        model.mkdir(parents=True)
+        (model / "config-2014-11-12.json").write_text(json.dumps({
+            "shapes": {"com.amazonaws.config#String": {
+                "type": "string",
+                "traits": {"smithy.api#pattern": "^arn:aws:iam::\\d{12}:role/.+$"},
+            }},
+        }))
+        gen = SmithyGenerator(schemas_dir=tmp_path / "schemas")
+        patches = {"AWS::Config::ConfigurationRecorder": {
+            "/properties/RoleARN": Patch(["config", "2014-11-12"], "com.amazonaws.config#String"),
+        }}
+        gen._write_all_patches(patches, tmp_path / "models", schema_dir)
+        out = json.loads(
+            (gen.patches_dir / "aws_config_configurationrecorder" / "smithy.json").read_text()
+        )
+        assert out == [{
+            "op": "add",
+            "path": "/properties/RoleARN/pattern",
+            "value": "^arn:aws[a-z\\-]*:iam::\\d{12}:role/.+$",
+        }]
 
 
 class TestManualGenerator:
