@@ -346,6 +346,7 @@ _MANUAL_PATCHES: dict[str, list[dict[str, Any]]] = {
     # Read-only attrs returning an ARN / sg id; add the format for E1040 (#53)
     "AWS::KMS::ReplicaKey": [
         _fmt("/properties/Arn/format", "AWS::KMS::Key.Arn"),
+        _fmt("/properties/KeyId/format", "AWS::KMS::Key.Id"),
     ],
     "AWS::SageMaker::Domain": [
         _fmt("/properties/SecurityGroupIdForDomainBoundary/format", _SG_ID),

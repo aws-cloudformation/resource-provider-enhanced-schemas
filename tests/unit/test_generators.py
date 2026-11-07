@@ -377,10 +377,11 @@ class TestFormatGenerator:
             tmp_path,
             {
                 "typeName": "AWS::KMS::ReplicaKey",
-                "properties": {"Arn": {"type": "string"}},
+                "properties": {"Arn": {"type": "string"}, "KeyId": {"type": "string"}},
             },
         )
         assert kms["/properties/Arn/format"] == "AWS::KMS::Key.Arn"
+        assert kms["/properties/KeyId/format"] == "AWS::KMS::Key.Id"
         sm = self._run_one(
             tmp_path,
             {
