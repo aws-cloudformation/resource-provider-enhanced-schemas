@@ -9,7 +9,7 @@ import pytest
 import regex
 from jsonschema import Draft7Validator, ValidationError, validators
 
-from cfn_schemas.assembly import apply_patches
+from cfn_schemas.assembly import apply_patches, translate_custom_keywords
 
 EXTENSIONS_DIR = Path(__file__).parent.parent.parent / "schemas" / "patches" / "extensions"
 
@@ -111,3 +111,90 @@ class TestServerlessFunctionAlarms:
     def test_rejects_non_list_scalar(self):
         with pytest.raises(ValidationError):
             RegexValidator(self._alarms_schema()).validate("not-a-list")
+
+
+class TestBlockDeviceMappingKeys:
+    """EC2 accepts several of Ebs/VirtualName/NoDevice, Auto Scaling exactly one (#83)."""
+
+    # BlockDeviceMapping as published, with NoDevice left untyped: it is an object on
+    # Instance, a string on LaunchTemplate/SpotFleet and a boolean on LaunchConfiguration,
+    # and these cases exercise the presence keyword rather than NoDevice's type.
+    BASE = {
+        "definitions": {
+            "BlockDeviceMapping": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "DeviceName": {"type": "string"},
+                    "Ebs": {"type": "object"},
+                    "NoDevice": {},
+                    "VirtualName": {"type": "string"},
+                },
+            }
+        }
+    }
+
+    def _validator(self, resource_dir: str):
+        schema = apply_patches(self.BASE, _load_manual(resource_dir))
+        standard = translate_custom_keywords(schema)
+        return RegexValidator(standard["definitions"]["BlockDeviceMapping"])
+
+    AT_LEAST_ONE = ["aws_ec2_instance", "aws_ec2_launchtemplate", "aws_ec2_spotfleet"]
+
+    @pytest.mark.parametrize("resource_dir", AT_LEAST_ONE)
+    @pytest.mark.parametrize(
+        "mapping",
+        [
+            {"DeviceName": "/dev/sdh", "Ebs": {"VolumeSize": 8}},
+            {"DeviceName": "/dev/sdh", "VirtualName": "ephemeral0"},
+            {"DeviceName": "/dev/sdh", "NoDevice": ""},
+            {"DeviceName": "/dev/sdh", "Ebs": {"VolumeSize": 8}, "VirtualName": "ephemeral0"},
+            {"DeviceName": "/dev/sdh", "Ebs": {"VolumeSize": 8}, "NoDevice": ""},
+            {"DeviceName": "/dev/sdh", "VirtualName": "ephemeral0", "NoDevice": ""},
+            {
+                "DeviceName": "/dev/sdh",
+                "Ebs": {"VolumeSize": 8},
+                "VirtualName": "ephemeral0",
+                "NoDevice": "",
+            },
+        ],
+    )
+    def test_ec2_accepts_any_combination(self, resource_dir, mapping):
+        assert list(self._validator(resource_dir).iter_errors(mapping)) == []
+
+    @pytest.mark.parametrize("resource_dir", AT_LEAST_ONE)
+    def test_ec2_rejects_none_present(self, resource_dir):
+        assert list(self._validator(resource_dir).iter_errors({"DeviceName": "/dev/sdh"})) != []
+
+    @pytest.mark.parametrize(
+        "mapping",
+        [
+            {"DeviceName": "/dev/sdh", "Ebs": {"VolumeSize": 8}},
+            {"DeviceName": "/dev/sdh", "VirtualName": "ephemeral0"},
+            {"DeviceName": "/dev/sdh", "NoDevice": True},
+        ],
+    )
+    def test_autoscaling_accepts_exactly_one(self, mapping):
+        validator = self._validator("aws_autoscaling_launchconfiguration")
+        assert list(validator.iter_errors(mapping)) == []
+
+    @pytest.mark.parametrize(
+        "mapping",
+        [
+            {"DeviceName": "/dev/sdh"},
+            {"DeviceName": "/dev/sdh", "Ebs": {"VolumeSize": 8}, "VirtualName": "ephemeral0"},
+            {"DeviceName": "/dev/sdh", "Ebs": {"VolumeSize": 8}, "NoDevice": True},
+            # Auto Scaling rejects on the key being present, not on its value.
+            {"DeviceName": "/dev/sdh", "Ebs": {"VolumeSize": 8}, "NoDevice": False},
+            {"DeviceName": "/dev/sdh", "VirtualName": "ephemeral0", "NoDevice": True},
+            {
+                "DeviceName": "/dev/sdh",
+                "Ebs": {"VolumeSize": 8},
+                "VirtualName": "ephemeral0",
+                "NoDevice": True,
+            },
+        ],
+    )
+    def test_autoscaling_rejects_combinations(self, mapping):
+        validator = self._validator("aws_autoscaling_launchconfiguration")
+        assert list(validator.iter_errors(mapping)) != []
