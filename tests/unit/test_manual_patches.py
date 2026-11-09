@@ -113,6 +113,49 @@ class TestServerlessFunctionAlarms:
             RegexValidator(self._alarms_schema()).validate("not-a-list")
 
 
+class TestIamManagedPolicyArns:
+    """IAM normalizes the ARN account segment, so aws is case-insensitive (#85)."""
+
+    # ManagedPolicyArns as published in the AWS::IAM::{Role,User,Group} schemas.
+    BASE = {
+        "properties": {
+            "ManagedPolicyArns": {"type": "array", "items": {"type": "string"}}
+        }
+    }
+
+    @pytest.fixture(scope="class", params=["aws_iam_role", "aws_iam_user", "aws_iam_group"])
+    def arns_validator(self, request):
+        schema = apply_patches(self.BASE, _load_manual(request.param))
+        return RegexValidator(schema["properties"]["ManagedPolicyArns"])
+
+    @pytest.mark.parametrize(
+        "arn",
+        [
+            "arn:aws:iam::aws:policy/ReadOnlyAccess",
+            "arn:aws:iam::Aws:policy/ReadOnlyAccess",
+            "arn:aws:iam::AWS:policy/ReadOnlyAccess",
+            "arn:aws:iam::aWs:policy/ReadOnlyAccess",
+            "arn:aws-us-gov:iam::AWS:policy/ReadOnlyAccess",
+            "arn:aws:iam::123456789012:policy/MyCustomPolicy",
+            "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM",
+        ],
+    )
+    def test_accepts_valid_arns(self, arns_validator, arn):
+        assert list(arns_validator.iter_errors([arn])) == []
+
+    @pytest.mark.parametrize(
+        "arn",
+        [
+            "arn:aws:iam::AWSX:policy/ReadOnlyAccess",
+            "arn:aws:iam::12345:policy/ReadOnlyAccess",
+            "arn:aws:iam::aws:policy/",
+            "arn:aws:iam::aws:role/ReadOnlyAccess",
+        ],
+    )
+    def test_rejects_invalid_arns(self, arns_validator, arn):
+        assert list(arns_validator.iter_errors([arn])) != []
+
+
 class TestBlockDeviceMappingKeys:
     """EC2 accepts several of Ebs/VirtualName/NoDevice, Auto Scaling exactly one (#83)."""
 
