@@ -12,6 +12,6 @@
  {
   "op": "add",
   "path": "/properties/ManagedPolicyArns/items/pattern",
-  "value": "arn:(aws[a-zA-Z-]*)?:iam::(\\d{12}|aws):policy/[a-zA-Z_0-9+=,.@\\-_/]+"
+  "value": "arn:(aws[a-zA-Z-]*)?:iam::(\\d{12}|[Aa][Ww][Ss]):policy/[a-zA-Z_0-9+=,.@\\-_/]+"
  }
 ]
