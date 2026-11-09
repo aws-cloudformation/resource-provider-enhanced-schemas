@@ -702,6 +702,91 @@ class TestSamOverrides:
         assert schema["properties"]["EndpointConfiguration"]["anyOf"] == [{"type": "object"}]
 
 
+class TestSmithyGenerator:
+    SERVICE = "transfer"
+    VERSION = "2018-11-05"
+    RESOURCE_TYPE = "AWS::Transfer::Profile"
+
+    def _run(self, tmp_path, tag_length, other_length):
+        from cfn_schemas.generators.smithy import Patch, SmithyGenerator
+
+        model_dir = tmp_path / "models" / self.SERVICE / "service" / self.VERSION
+        model_dir.mkdir(parents=True)
+        (model_dir / f"{self.SERVICE}-{self.VERSION}.json").write_text(
+            json.dumps(
+                {
+                    "shapes": {
+                        "smithy#Tags": {
+                            "type": "list",
+                            "traits": {"smithy.api#length": tag_length},
+                        },
+                        "smithy#CertificateIds": {
+                            "type": "list",
+                            "traits": {"smithy.api#length": other_length},
+                        },
+                    }
+                }
+            )
+        )
+
+        schema_dir = tmp_path / "registry"
+        schema_dir.mkdir()
+        (schema_dir / "aws-transfer-profile.json").write_text(
+            json.dumps(
+                {
+                    "typeName": self.RESOURCE_TYPE,
+                    "properties": {
+                        "Tags": {"type": "array"},
+                        "CertificateIds": {"type": "array"},
+                    },
+                }
+            )
+        )
+
+        source = [self.SERVICE, self.VERSION]
+        all_patches = {
+            self.RESOURCE_TYPE: {
+                "/properties/Tags": Patch(source=source, shape="smithy#Tags"),
+                "/properties/CertificateIds": Patch(
+                    source=source, shape="smithy#CertificateIds"
+                ),
+            }
+        }
+
+        SmithyGenerator(schemas_dir=tmp_path)._write_all_patches(
+            all_patches, tmp_path / "models", schema_dir
+        )
+
+        out = tmp_path / "patches" / "extensions" / "aws_transfer_profile" / "smithy.json"
+        return {p["path"]: p.get("value") for p in json.loads(out.read_text())}
+
+    def test_tags_minimum_is_not_emitted(self, tmp_path):
+        """A model minimum on the resource-tag list is dropped, the maximum kept (#86)."""
+        patches = self._run(
+            tmp_path, tag_length={"min": 1, "max": 50}, other_length={"min": 1, "max": 10}
+        )
+
+        assert "/properties/Tags/minItems" not in patches
+        assert patches["/properties/Tags/maxItems"] == 50
+
+    def test_other_list_minimums_are_untouched(self, tmp_path):
+        """Only Tags is exempt; every other list keeps its model minimum (#86)."""
+        patches = self._run(
+            tmp_path, tag_length={"min": 1, "max": 50}, other_length={"min": 1, "max": 10}
+        )
+
+        assert patches["/properties/CertificateIds/minItems"] == 1
+        assert patches["/properties/CertificateIds/maxItems"] == 10
+
+    def test_tags_maximum_alone_still_emitted(self, tmp_path):
+        patches = self._run(
+            tmp_path, tag_length={"max": 200}, other_length={"min": 2, "max": 10}
+        )
+
+        assert "/properties/Tags/minItems" not in patches
+        assert patches["/properties/Tags/maxItems"] == 200
+
+
 def _make_generator(tmp_path: Path) -> BaseGenerator:
     """Create a concrete generator for testing base class methods."""
     schemas_dir = tmp_path / "schemas"

@@ -42,6 +42,12 @@ _SKIP_SERVICES = {
 
 _SKIP_RESOURCE_TYPES = {"AWS::CloudFormation::Stack"}
 _SKIP_PROPERTY_NAMES = {"State"}
+
+# CloudFormation never forwards an empty resource-tag list: a handler either omits the key
+# or merges the stack's own aws:cloudformation:* tags in. So a model minimum on the tag list
+# rejects templates the service would accept, while maxItems still applies (#86).
+_TAGS_PROPERTY_PATH = "/properties/Tags"
+
 _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::AmazonMQ::Broker": ["/properties/StorageType"],
     # Glue stores ConnectionType as a free string (new connectors are onboarded
@@ -466,6 +472,10 @@ class SmithyGenerator(BaseGenerator):
                         elif shape_type in ("integer", "long", "float", "double"):
                             jf = "maximum" if field == "max" else "minimum"
                         else:
+                            continue
+                        # An API-model minimum on the resource-tag list does not
+                        # reach the service through CloudFormation (#86).
+                        if jf == "minItems" and path == _TAGS_PROPERTY_PATH:
                             continue
                         if f"{path}/{jf}" in manual_paths:
                             continue
