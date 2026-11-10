@@ -38,5 +38,59 @@
   "op": "add",
   "path": "/properties/Timeout/minimum",
   "value": 1
+ },
+ {
+  "op": "add",
+  "path": "/definitions/LoggingConfig/allOf",
+  "value": [
+   {
+    "anyOf": [
+     {
+      "not": {
+       "required": [
+        "ApplicationLogLevel"
+       ]
+      }
+     },
+     {
+      "not": {
+       "properties": {
+        "LogFormat": {
+         "const": "Text",
+         "type": "string"
+        }
+       },
+       "required": [
+        "LogFormat"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "anyOf": [
+     {
+      "not": {
+       "required": [
+        "SystemLogLevel"
+       ]
+      }
+     },
+     {
+      "not": {
+       "properties": {
+        "LogFormat": {
+         "const": "Text",
+         "type": "string"
+        }
+       },
+       "required": [
+        "LogFormat"
+       ]
+      }
+     }
+    ]
+   }
+  ]
  }
 ]
