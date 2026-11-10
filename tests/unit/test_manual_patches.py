@@ -291,3 +291,148 @@ class TestDlmCreateRuleInterval:
     )
     def test_rejects(self, create_rule_validator, create_rule):
         assert list(create_rule_validator.iter_errors(create_rule)) != []
+
+
+class TestCodeBuildProjectEnums:
+    """Source/Artifacts take the lowercase form of every value, Environment only aliases (#82)."""
+
+    # The enum-bearing properties and Name as published in the AWS::CodeBuild::Project
+    # provider schema, where each is an unconstrained string.
+    BASE = {
+        "properties": {"Name": {"type": "string"}},
+        "definitions": {
+            "Source": {"properties": {"Type": {"type": "string"}}},
+            "Artifacts": {
+                "properties": {
+                    "Packaging": {"type": "string"},
+                    "Type": {"type": "string"},
+                }
+            },
+            "Environment": {
+                "properties": {
+                    "ComputeType": {"type": "string"},
+                    "Type": {"type": "string"},
+                }
+            },
+        },
+    }
+
+    ARN = "arn:aws:codebuild:us-east-1:123456789012:project/"
+
+    @pytest.fixture(scope="class")
+    def validator_for(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_codebuild_project"))
+
+        def _validator(definition, prop):
+            parent = schema["definitions"][definition] if definition else schema
+            return RegexValidator(parent["properties"][prop])
+
+        return _validator
+
+    @pytest.mark.parametrize(
+        "definition,prop,value",
+        [
+            ("Source", "Type", "BITBUCKET"),
+            ("Source", "Type", "CODECOMMIT"),
+            ("Source", "Type", "CODEPIPELINE"),
+            ("Source", "Type", "GITHUB"),
+            ("Source", "Type", "GITHUB_ENTERPRISE"),
+            ("Source", "Type", "GITLAB"),
+            ("Source", "Type", "GITLAB_SELF_MANAGED"),
+            ("Source", "Type", "NO_SOURCE"),
+            ("Source", "Type", "S3"),
+            ("Source", "Type", "bitbucket"),
+            ("Source", "Type", "codecommit"),
+            ("Source", "Type", "codepipeline"),
+            ("Source", "Type", "github"),
+            ("Source", "Type", "github_enterprise"),
+            ("Source", "Type", "gitlab"),
+            ("Source", "Type", "gitlab_self_managed"),
+            ("Source", "Type", "no_source"),
+            ("Source", "Type", "s3"),
+            ("Artifacts", "Type", "CODEPIPELINE"),
+            ("Artifacts", "Type", "NO_ARTIFACTS"),
+            ("Artifacts", "Type", "S3"),
+            ("Artifacts", "Type", "codepipeline"),
+            ("Artifacts", "Type", "no_artifacts"),
+            ("Artifacts", "Type", "s3"),
+            ("Artifacts", "Packaging", "NONE"),
+            ("Artifacts", "Packaging", "ZIP"),
+            ("Artifacts", "Packaging", "none"),
+            ("Artifacts", "Packaging", "zip"),
+            ("Environment", "Type", "ARM_CONTAINER"),
+            ("Environment", "Type", "LINUX_CONTAINER"),
+            ("Environment", "Type", "WINDOWS_SERVER_2022_CONTAINER"),
+            ("Environment", "Type", "MAC_ARM"),
+            ("Environment", "Type", "linuxContainer"),
+            ("Environment", "Type", "container"),
+            ("Environment", "ComputeType", "BUILD_GENERAL1_SMALL"),
+            ("Environment", "ComputeType", "BUILD_LAMBDA_1GB"),
+            ("Environment", "ComputeType", "CUSTOM_INSTANCE_TYPE"),
+            ("Environment", "ComputeType", "ATTRIBUTE_BASED_COMPUTE"),
+            ("Environment", "ComputeType", "small"),
+            ("Environment", "ComputeType", "medium"),
+            ("Environment", "ComputeType", "large"),
+            ("Environment", "ComputeType", "xlarge"),
+            ("Environment", "ComputeType", "twoxlarge"),
+        ],
+    )
+    def test_accepts_enum_values(self, validator_for, definition, prop, value):
+        assert list(validator_for(definition, prop).iter_errors(value)) == []
+
+    @pytest.mark.parametrize(
+        "definition,prop,value",
+        [
+            ("Source", "Type", "Codepipeline"),
+            ("Source", "Type", "AZURE_DEV_OPS"),
+            ("Source", "Type", "azure_dev_ops"),
+            ("Artifacts", "Type", "noArtifacts"),
+            ("Artifacts", "Packaging", "Zip"),
+            # Environment rejects the lowercase form of its own canonical values.
+            ("Environment", "Type", "armContainer"),
+            ("Environment", "Type", "linux_container"),
+            ("Environment", "Type", "linuxcontainer"),
+            ("Environment", "Type", "LINUXCONTAINER"),
+            ("Environment", "Type", "CONTAINER"),
+            ("Environment", "Type", "Container"),
+            ("Environment", "ComputeType", "2xlarge"),
+            ("Environment", "ComputeType", "SMALL"),
+            ("Environment", "ComputeType", "Small"),
+            ("Environment", "ComputeType", "TWOXLARGE"),
+            ("Environment", "ComputeType", "build_general1_small"),
+            ("Environment", "ComputeType", "build_lambda_1gb"),
+        ],
+    )
+    def test_rejects_enum_values(self, validator_for, definition, prop, value):
+        assert list(validator_for(definition, prop).iter_errors(value)) != []
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "MyProject",
+            ARN + "MyProject",
+            "arn:aws-us-gov:codebuild:us-gov-west-1:123456789012:project/P1",
+            "arn:aws-cn:codebuild:cn-north-1:123456789012:project/P1",
+            ARN + "P" * 150,
+        ],
+    )
+    def test_accepts_name(self, validator_for, name):
+        assert list(validator_for(None, "Name").iter_errors(name)) == []
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "arn:aws:codebuild:us-east-1:12345:project/Short",
+            "arn:aws:s3:::my-bucket",
+            "arn:aws:codebuild:us-east-1:123456789012:build/P",
+            "arn:azure:codebuild:us-east-1:123456789012:project/P",
+            "arn:aws:codebuild:US-EAST-1:123456789012:project/P1",
+            "notarn:aws:codebuild:us-east-1:123456789012:project/P",
+            ARN + "x",
+            ARN + "P" * 151,
+            "x",
+            "my_project!",
+        ],
+    )
+    def test_rejects_name(self, validator_for, name):
+        assert list(validator_for(None, "Name").iter_errors(name)) != []
