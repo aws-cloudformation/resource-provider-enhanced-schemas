@@ -84,6 +84,10 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::Connect::RoutingProfile": ["/properties/QueueConfigs"],
     "AWS::Connect::User": ["/definitions/DeskPhoneNumber"],
     "AWS::Cognito::UserPoolDomain": ["/properties/Domain"],
+    # CreateRule.Interval's real constraint is the set {1,2,3,4,6,8,12,24}, and
+    # it only applies without a CronExpression; manual.json re-adds it as a
+    # conditional enum, so drop the Smithy minimum.
+    "AWS::DLM::LifecyclePolicy": ["/definitions/CreateRule/properties/Interval"],
     "AWS::DynamoDB::Table": [
         "/definitions/KeySchema",
         "/definitions/LocalSecondaryIndex/properties/KeySchema",

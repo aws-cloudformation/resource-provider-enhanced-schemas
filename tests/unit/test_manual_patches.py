@@ -241,3 +241,53 @@ class TestBlockDeviceMappingKeys:
     def test_autoscaling_rejects_combinations(self, mapping):
         validator = self._validator("aws_autoscaling_launchconfiguration")
         assert list(validator.iter_errors(mapping)) != []
+
+
+class TestDlmCreateRuleInterval:
+    """CreateRule.Interval is an enumerated set, and only without a CronExpression (#84)."""
+
+    # CreateRule as published in the AWS::DLM::LifecyclePolicy provider schema.
+    BASE = {
+        "definitions": {
+            "CreateRule": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "CronExpression": {"type": "string"},
+                    "Interval": {"type": "integer"},
+                    "IntervalUnit": {"type": "string"},
+                    "Location": {"type": "string"},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture(scope="class")
+    def create_rule_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_dlm_lifecyclepolicy"))
+        return RegexValidator(schema["definitions"]["CreateRule"])
+
+    @pytest.mark.parametrize(
+        "create_rule",
+        [
+            {"Interval": 1, "IntervalUnit": "HOURS"},
+            {"Interval": 24, "IntervalUnit": "HOURS"},
+            {"IntervalUnit": "HOURS"},
+            # Not validated by DLM when a cron expression drives the schedule.
+            {"Interval": 0, "CronExpression": "cron(0 12 * * ? *)"},
+            {"Interval": 5, "CronExpression": "cron(0 12 * * ? *)"},
+        ],
+    )
+    def test_accepts(self, create_rule_validator, create_rule):
+        assert list(create_rule_validator.iter_errors(create_rule)) == []
+
+    @pytest.mark.parametrize(
+        "create_rule",
+        [
+            {"Interval": 0, "IntervalUnit": "HOURS"},
+            {"Interval": 5, "IntervalUnit": "HOURS"},
+            {"Interval": 25, "IntervalUnit": "HOURS"},
+        ],
+    )
+    def test_rejects(self, create_rule_validator, create_rule):
+        assert list(create_rule_validator.iter_errors(create_rule)) != []
