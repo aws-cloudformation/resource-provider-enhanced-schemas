@@ -42,6 +42,12 @@ _SKIP_SERVICES = {
 
 _SKIP_RESOURCE_TYPES = {"AWS::CloudFormation::Stack"}
 _SKIP_PROPERTY_NAMES = {"State"}
+
+# CloudFormation never forwards an empty resource-tag list: a handler either omits the key
+# or merges the stack's own aws:cloudformation:* tags in. So a model minimum on the tag list
+# rejects templates the service would accept, while maxItems still applies (#86).
+_TAGS_PROPERTY_PATH = "/properties/Tags"
+
 _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::AmazonMQ::Broker": ["/properties/StorageType"],
     # Glue stores ConnectionType as a free string (new connectors are onboarded
@@ -78,6 +84,10 @@ _SKIP_RESOURCE_PATHS: dict[str, list[str]] = {
     "AWS::Connect::RoutingProfile": ["/properties/QueueConfigs"],
     "AWS::Connect::User": ["/definitions/DeskPhoneNumber"],
     "AWS::Cognito::UserPoolDomain": ["/properties/Domain"],
+    # CreateRule.Interval's real constraint is the set {1,2,3,4,6,8,12,24}, and
+    # it only applies without a CronExpression; manual.json re-adds it as a
+    # conditional enum, so drop the Smithy minimum.
+    "AWS::DLM::LifecyclePolicy": ["/definitions/CreateRule/properties/Interval"],
     "AWS::DynamoDB::Table": [
         "/definitions/KeySchema",
         "/definitions/LocalSecondaryIndex/properties/KeySchema",
@@ -462,6 +472,10 @@ class SmithyGenerator(BaseGenerator):
                         elif shape_type in ("integer", "long", "float", "double"):
                             jf = "maximum" if field == "max" else "minimum"
                         else:
+                            continue
+                        # An API-model minimum on the resource-tag list does not
+                        # reach the service through CloudFormation (#86).
+                        if jf == "minItems" and path == _TAGS_PROPERTY_PATH:
                             continue
                         if f"{path}/{jf}" in manual_paths:
                             continue
