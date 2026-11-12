@@ -510,6 +510,11 @@ class TestWidenPartitionPatterns:
             "arn:aws(|-cn|-us-gov):iam::[0-9]*:role/.*",
             "arn:((aws)|(aws-cn)|(aws-us-gov)):iam::\\d{12}:role/.*",
             "^arn:(aws|aws-us-gov|aws-cn|aws-iso|aws-iso-b):iam::\\d{12}:role/.*$",
+            "^arn:aws-cn:iam::\\d{12}:role/.+$",
+            "^arn:aws-us-gov:iam::\\d{12}:role/.+$",
+            "^arn:aws-iso:iam::\\d{12}:role/.+$",
+            "^arn:(aws-cn|aws-us-gov):iam::\\d{12}:role/.+$",
+            "^arn:aws-(?:cn|us-gov):iam::\\d{12}:role/.+$",
         ],
     )
     def test_arn_accepts_every_partition(self, pattern):
@@ -542,11 +547,14 @@ class TestWidenPartitionPatterns:
             "arn:(aws|aws-us-gov|aws-cn|aws-iso|aws-iso-b)(-[a-z]+)?:airflow:",
             "arn:aws.*",
             "arn:.+:iam::",
+            "arn:azure:iam::",
+            r"^[arn:aws\-cn:]$",
+            "^[arn:aws:]$",
+            r"^\arn:aws-cn:iam::.*$",
             # contains a lookaround, a backreference, or a partition crossing | $ or )
             "^(?!arn:aws:).+$",
             "^(?<!x)arn:aws:iam::",
             "^arn:aws|foo:bar$",
-            "^(?:arn:aws|arn:aws-cn:s3):x$",
             "^arn:aws$",
             "^(\\d)\\1:arn:aws:",
         ],
@@ -554,9 +562,37 @@ class TestWidenPartitionPatterns:
     def test_leaves_alone(self, pattern):
         assert widen_pattern(pattern) == pattern
 
+    def test_safe_partition_in_an_alternative_is_widened(self):
+        pattern = re.compile(widen_pattern("^(?:arn:aws|arn:aws-cn:s3):x$"))
+        # The first arm crosses an alternation and must retain its original match.
+        assert pattern.fullmatch("arn:aws:x")
+        for arn in _PARTITION_ARNS:
+            partition = arn.split(":")[1]
+            assert pattern.fullmatch(f"arn:{partition}:s3:x")
+        assert not pattern.fullmatch("arn:azure:s3:x")
+
+    @pytest.mark.parametrize(
+        "pattern, suffix",
+        [
+            ("^arn:aws:s3:::bucket/arn:$", "s3:::bucket/arn:"),
+            ("^arn:aws:iam::[arn:]+$", "iam::arn:"),
+        ],
+    )
+    def test_literal_arn_in_resource_does_not_block_widening(self, pattern, suffix):
+        widened = re.compile(widen_pattern(pattern))
+        for arn in _PARTITION_ARNS:
+            partition = arn.split(":")[1]
+            assert widened.fullmatch(f"arn:{partition}:{suffix}")
+        assert not widened.fullmatch(f"arn:azure:{suffix}")
+
     @pytest.mark.parametrize(
         "pattern",
-        ["arn:(aws|aws-cn):iam::\\d{12}:role/x|arn:aws:s3:::b", "^arn:(aws|arn:aws:x):s3$"],
+        [
+            "arn:(aws|aws-cn):iam::\\d{12}:role/x|arn:aws:s3:::b",
+            "^arn:(aws|arn:aws:x):s3$",
+            "^arn:aws-cn:iam::\\d{12}:role/.+$",
+            "^arn:(aws-cn|aws-us-gov):iam::\\d{12}:role/.+$",
+        ],
     )
     def test_idempotent(self, pattern):
         once = widen_pattern(pattern)
