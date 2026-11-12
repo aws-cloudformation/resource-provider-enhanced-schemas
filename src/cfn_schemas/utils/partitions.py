@@ -71,7 +71,17 @@ def _arn_partition_spans(pattern: str) -> list[tuple[int, int]]:
     segment already returned is part of that segment.
     """
     spans: list[tuple[int, int]] = []
+    scan_index = 0
     for match in re.finditer("arn:", pattern):
+        while scan_index < match.start():
+            if pattern[scan_index] == "\\":
+                scan_index += 2
+            elif pattern[scan_index] == "[":
+                scan_index = _skip_class(pattern, scan_index)
+            else:
+                scan_index += 1
+        if scan_index > match.start():
+            continue
         start = end = match.end()
         if spans and start < spans[-1][1]:
             continue
@@ -103,7 +113,7 @@ def _arn_partition_spans(pattern: str) -> list[tuple[int, int]]:
 
 
 def _rejects_a_partition(segment: str) -> bool:
-    """True when the segment accepts ``aws`` but not every partition.
+    """True when the segment accepts a known AWS partition, but not every partition.
 
     The check uses Python ``re``. A segment that only compiles as ECMA-262 is
     treated as accepting every partition and left alone.
@@ -112,7 +122,8 @@ def _rejects_a_partition(segment: str) -> bool:
         regex = re.compile(f"^(?:{segment})$")
     except re.error:
         return False
-    return bool(regex.match("aws")) and not all(regex.match(p) for p in _PARTITIONS)
+    matches = [bool(regex.match(partition)) for partition in _PARTITIONS]
+    return any(matches) and not all(matches)
 
 
 def _skip_class(pattern: str, index: int) -> int:
