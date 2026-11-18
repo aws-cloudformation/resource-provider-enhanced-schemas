@@ -92,5 +92,55 @@
     ]
    }
   ]
+ },
+ {
+  "op": "add",
+  "path": "/allOf",
+  "value": [
+   {
+    "anyOf": [
+     {
+      "required": [
+       "CapacityProviderConfig"
+      ]
+     },
+     {
+      "not": {
+       "properties": {
+        "LoggingConfig": {
+         "anyOf": [
+          {
+           "required": [
+            "ApplicationLogLevel"
+           ]
+          },
+          {
+           "required": [
+            "SystemLogLevel"
+           ]
+          }
+         ]
+        }
+       },
+       "required": [
+        "LoggingConfig"
+       ]
+      }
+     },
+     {
+      "properties": {
+       "LoggingConfig": {
+        "required": [
+         "LogFormat"
+        ]
+       }
+      },
+      "required": [
+       "LoggingConfig"
+      ]
+     }
+    ]
+   }
+  ]
  }
 ]
