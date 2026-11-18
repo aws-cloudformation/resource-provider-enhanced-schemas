@@ -17,6 +17,9 @@ _EXEMPTIONS = set(
         (Path(__file__).parents[1] / "fixtures" / "arn_partition_exemptions.json").read_text()
     )
 )
+_OBSCURED_ARN_PREFIX_RE = re.compile(
+    r"(?:a|\[a\])(?:r|\[r\])(?:n|\[n\])(?::|\\:|\[:\]|\):)", re.IGNORECASE
+)
 
 
 def _patterns(node, path=""):
@@ -35,7 +38,7 @@ def _patterns(node, path=""):
 def _has_uninspected_arn(pattern):
     arns = list(re.finditer("arn:", pattern))
     if not arns:
-        return False
+        return "aws" in pattern.lower() and bool(_OBSCURED_ARN_PREFIX_RE.search(pattern))
     if _SKIP_RE.search(pattern):
         return True
     spans = _arn_partition_spans(pattern)

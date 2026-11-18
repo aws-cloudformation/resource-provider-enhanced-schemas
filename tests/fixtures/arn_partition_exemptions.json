@@ -1,5 +1,6 @@
 [
   "(arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:[a-z\\-]*\\/)?([a-zA-Z0-9]([a-zA-Z0-9-]){0,62})(?<!-)$",
+  "^((arn):(aws|aws-cn|aws-iso|aws-iso-[a-z]{1}|aws-us-gov|aws-eusc):(iam)::\\d{12}:role[/].*)$",
   "^(?!arn:)[!-~]{1,1024}$",
   "^(?!arn:)[!-~]{1,253}$",
   "^(?!arn:[^:]*:events:::aws-sdk:)",
