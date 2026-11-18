@@ -19,9 +19,9 @@ _PARTITIONS = (
 # Matches every AWS partition name.
 _ANY_PARTITION = r"aws[a-z\-]*"
 
-# Patterns with a lookaround or a backreference are returned unchanged: adding
-# an alternative inside a lookaround inverts what it tests.
-_SKIP_RE = re.compile(r"\(\?<?[=!]|\\[1-9]")
+# Patterns with constructs whose contents cannot be rewritten safely are
+# returned unchanged rather than risking a change to the accepted language.
+_SKIP_RE = re.compile(r"\(\?<?[=!#]|\\[1-9]|\\Q")
 
 
 def widen_pattern(pattern: str) -> str:
@@ -112,12 +112,29 @@ def _arn_partition_spans(pattern: str) -> list[tuple[int, int]]:
     return spans
 
 
+def _has_context_anchor(segment: str) -> bool:
+    index = 0
+    while index < len(segment):
+        char = segment[index]
+        if char == "\\":
+            index += 2
+        elif char == "[":
+            index = _skip_class(segment, index)
+        elif char in "^$":
+            return True
+        else:
+            index += 1
+    return False
+
+
 def _rejects_a_partition(segment: str) -> bool:
     """True when the segment accepts a known AWS partition, but not every partition.
 
-    The check uses Python ``re``. A segment that only compiles as ECMA-262 is
-    treated as accepting every partition and left alone.
+    The check uses Python ``re``. A segment that only compiles as ECMA-262 or
+    whose anchors depend on the surrounding pattern is left alone.
     """
+    if _has_context_anchor(segment):
+        return False
     try:
         regex = re.compile(f"^(?:{segment})$")
     except re.error:
@@ -128,6 +145,8 @@ def _rejects_a_partition(segment: str) -> bool:
 
 def _skip_class(pattern: str, index: int) -> int:
     """Index just past the character class that opens at ``pattern[index]``."""
+    if pattern.startswith("[^]", index):
+        return index + 3
     index += 1
     if index < len(pattern) and pattern[index] == "^":
         index += 1
