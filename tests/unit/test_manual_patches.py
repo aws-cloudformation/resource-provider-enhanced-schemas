@@ -243,6 +243,37 @@ class TestBlockDeviceMappingKeys:
         assert list(validator.iter_errors(mapping)) != []
 
 
+class TestCognitoUserPoolClientExplicitAuthFlows:
+    """ExplicitAuthFlows accepts both Cognito token-exchange modes."""
+
+    BASE = {
+        "properties": {
+            "ExplicitAuthFlows": {
+                "type": "array",
+                "items": {"type": "string"},
+            }
+        }
+    }
+
+    @pytest.fixture(scope="class")
+    def explicit_auth_flows_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_cognito_userpoolclient"))
+        return RegexValidator(schema["properties"]["ExplicitAuthFlows"])
+
+    @pytest.mark.parametrize(
+        "flow",
+        [
+            "ALLOW_TOKEN_EXCHANGE_DELEGATION",
+            "ALLOW_TOKEN_EXCHANGE_IMPERSONATION",
+        ],
+    )
+    def test_accepts_token_exchange_flow(self, explicit_auth_flows_validator, flow):
+        assert list(explicit_auth_flows_validator.iter_errors([flow])) == []
+
+    def test_rejects_unknown_token_exchange_flow(self, explicit_auth_flows_validator):
+        assert list(explicit_auth_flows_validator.iter_errors(["ALLOW_TOKEN_EXCHANGE_UNKNOWN"])) != []
+
+
 class TestDlmCreateRuleInterval:
     """CreateRule.Interval is an enumerated set, and only without a CronExpression (#84)."""
 
