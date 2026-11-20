@@ -467,3 +467,48 @@ class TestCodeBuildProjectEnums:
     )
     def test_rejects_name(self, validator_for, name):
         assert list(validator_for(None, "Name").iter_errors(name)) != []
+
+
+class TestS3BucketKmsMasterKeyId:
+    """KMSMasterKeyID is only accepted with a KMS SSEAlgorithm, not with AES256."""
+
+    # ServerSideEncryptionByDefault as published in the AWS::S3::Bucket provider schema.
+    BASE = {
+        "definitions": {
+            "ServerSideEncryptionByDefault": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "KMSMasterKeyID": {"type": "string"},
+                    "SSEAlgorithm": {
+                        "type": "string",
+                        "enum": ["aws:kms", "AES256", "aws:kms:dsse"],
+                    },
+                },
+                "required": ["SSEAlgorithm"],
+            }
+        }
+    }
+
+    KEY = "arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+
+    @pytest.fixture(scope="class")
+    def sse_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return RegexValidator(schema["definitions"]["ServerSideEncryptionByDefault"])
+
+    @pytest.mark.parametrize(
+        "sse",
+        [
+            {"SSEAlgorithm": "AES256"},
+            {"SSEAlgorithm": "aws:kms"},
+            {"SSEAlgorithm": "aws:kms", "KMSMasterKeyID": KEY},
+            {"SSEAlgorithm": "aws:kms:dsse", "KMSMasterKeyID": KEY},
+        ],
+    )
+    def test_accepts(self, sse_validator, sse):
+        assert list(sse_validator.iter_errors(sse)) == []
+
+    def test_rejects_key_with_aes256(self, sse_validator):
+        sse = {"SSEAlgorithm": "AES256", "KMSMasterKeyID": self.KEY}
+        assert list(sse_validator.iter_errors(sse)) != []
