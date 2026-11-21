@@ -467,3 +467,37 @@ class TestCodeBuildProjectEnums:
     )
     def test_rejects_name(self, validator_for, name):
         assert list(validator_for(None, "Name").iter_errors(name)) != []
+
+
+class TestS3BucketDefaultRetentionDaysYears:
+    """An Object Lock DefaultRetention takes Days or Years, not both."""
+
+    BASE = {
+        "definitions": {
+            "DefaultRetention": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "Days": {"type": "integer"},
+                    "Mode": {"type": "string"},
+                    "Years": {"type": "integer"},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture
+    def retention_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["DefaultRetention"]))
+
+    @pytest.mark.parametrize(
+        "retention",
+        [{"Mode": "GOVERNANCE", "Days": 30}, {"Mode": "GOVERNANCE", "Years": 1}],
+    )
+    def test_accepts(self, retention_validator, retention):
+        assert list(retention_validator.iter_errors(retention)) == []
+
+    def test_rejects_days_and_years(self, retention_validator):
+        retention = {"Mode": "GOVERNANCE", "Days": 30, "Years": 1}
+        assert list(retention_validator.iter_errors(retention)) != []
