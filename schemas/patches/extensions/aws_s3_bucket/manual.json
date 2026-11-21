@@ -47,5 +47,27 @@
   "op": "add",
   "path": "/properties/BucketName/pattern",
   "value": "^([a-z0-9][a-z0-9.-]*[a-z0-9])?$"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ServerSideEncryptionByDefault/if",
+  "value": {
+   "required": [
+    "KMSMasterKeyID"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ServerSideEncryptionByDefault/then",
+  "value": {
+   "properties": {
+    "SSEAlgorithm": {
+     "not": {
+      "const": "AES256"
+     }
+    }
+   }
+  }
  }
 ]
