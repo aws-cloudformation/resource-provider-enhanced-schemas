@@ -529,3 +529,40 @@ class TestS3BucketMetadataTableEncryptionKmsKey:
 
     def test_rejects_kms_without_key(self, encryption_validator):
         assert list(encryption_validator.iter_errors({"SseAlgorithm": "aws:kms"})) != []
+
+
+class TestS3BucketMetadataRecordExpiration:
+    """Enabled journal record expiration needs Days of at least 7."""
+
+    BASE = {
+        "definitions": {
+            "RecordExpiration": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "Days": {"type": "integer"},
+                    "Expiration": {"type": "string", "enum": ["ENABLED", "DISABLED"]},
+                },
+                "required": ["Expiration"],
+            }
+        }
+    }
+
+    @pytest.fixture
+    def expiration_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(schema["definitions"]["RecordExpiration"])
+
+    @pytest.mark.parametrize(
+        "expiration",
+        [{"Expiration": "ENABLED", "Days": 7}, {"Expiration": "DISABLED"}],
+    )
+    def test_accepts(self, expiration_validator, expiration):
+        assert list(expiration_validator.iter_errors(expiration)) == []
+
+    @pytest.mark.parametrize(
+        "expiration",
+        [{"Expiration": "ENABLED", "Days": 6}, {"Expiration": "ENABLED"}],
+    )
+    def test_rejects(self, expiration_validator, expiration):
+        assert list(expiration_validator.iter_errors(expiration)) != []

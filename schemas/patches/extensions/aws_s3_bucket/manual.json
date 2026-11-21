@@ -83,5 +83,35 @@
     "KmsKeyArn"
    ]
   }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/RecordExpiration/if",
+  "value": {
+   "properties": {
+    "Expiration": {
+     "const": "ENABLED",
+     "type": "string"
+    }
+   },
+   "required": [
+    "Expiration"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/RecordExpiration/then",
+  "value": {
+   "properties": {
+    "Days": {
+     "minimum": 7,
+     "type": "integer"
+    }
+   },
+   "required": [
+    "Days"
+   ]
+  }
  }
 ]
