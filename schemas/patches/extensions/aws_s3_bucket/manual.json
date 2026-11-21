@@ -35,6 +35,12 @@
    ],
    "ObjectSizeLessThan": [
     "AbortIncompleteMultipartUpload"
+   ],
+   "Transition": [
+    "Transitions"
+   ],
+   "Transitions": [
+    "Transition"
    ]
   }
  },

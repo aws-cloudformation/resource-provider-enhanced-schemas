@@ -467,3 +467,52 @@ class TestCodeBuildProjectEnums:
     )
     def test_rejects_name(self, validator_for, name):
         assert list(validator_for(None, "Name").iter_errors(name)) != []
+
+
+class TestS3BucketLifecycleTransitionSingularPlural:
+    """A lifecycle rule uses Transition or Transitions, not both."""
+
+    BASE = {
+        "definitions": {
+            "Rule": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "AbortIncompleteMultipartUpload": {"type": "object"},
+                    "ExpirationDate": {"type": "string"},
+                    "ExpirationInDays": {"type": "integer"},
+                    "ExpiredObjectDeleteMarker": {"type": "boolean"},
+                    "ObjectSizeGreaterThan": {"type": "string"},
+                    "ObjectSizeLessThan": {"type": "string"},
+                    "Status": {"type": "string"},
+                    "Transition": {"type": "object"},
+                    "Transitions": {"type": "array", "items": {"type": "object"}},
+                },
+                "required": ["Status"],
+            }
+        }
+    }
+
+    @pytest.fixture
+    def rule_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["Rule"]))
+
+    TRANSITION = {"StorageClass": "GLACIER", "TransitionInDays": 30}
+
+    @pytest.mark.parametrize("key", ["Transition", "Transitions"])
+    def test_accepts_one(self, rule_validator, key):
+        value = self.TRANSITION if key == "Transition" else [self.TRANSITION]
+        assert list(rule_validator.iter_errors({"Status": "Enabled", key: value})) == []
+
+    def test_accepts_empty_transitions_beside_transition(self, rule_validator):
+        rule = {"Status": "Enabled", "Transition": self.TRANSITION, "Transitions": []}
+        assert list(rule_validator.iter_errors(rule)) == []
+
+    def test_rejects_both(self, rule_validator):
+        rule = {
+            "Status": "Enabled",
+            "Transition": self.TRANSITION,
+            "Transitions": [self.TRANSITION],
+        }
+        assert list(rule_validator.iter_errors(rule)) != []
