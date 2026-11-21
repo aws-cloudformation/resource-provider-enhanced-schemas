@@ -556,3 +556,50 @@ class TestS3BucketWebsiteRedirectAllRequestsTo:
             "RoutingRules": [{"RedirectRule": {"HostName": "example.com"}}],
         }
         assert list(website_validator.iter_errors(website)) != []
+
+
+class TestS3BucketWebsiteRoutingRulesNeedIndex:
+    """RoutingRules need an IndexDocument."""
+
+    BASE = {
+        "definitions": {
+            "WebsiteConfiguration": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "ErrorDocument": {"type": "string"},
+                    "IndexDocument": {"type": "string"},
+                    "RedirectAllRequestsTo": {"type": "object"},
+                    "RoutingRules": {"type": "array", "items": {"type": "object"}},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture
+    def website_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(
+            translate_custom_keywords(schema["definitions"]["WebsiteConfiguration"])
+        )
+
+    @pytest.mark.parametrize(
+        "website",
+        [
+            {
+                "IndexDocument": "index.html",
+                "RoutingRules": [{"RedirectRule": {"HostName": "example.com"}}],
+            },
+            {"ErrorDocument": "error.html"},
+            {"ErrorDocument": "error.html", "RoutingRules": []},
+        ],
+    )
+    def test_accepts(self, website_validator, website):
+        assert list(website_validator.iter_errors(website)) == []
+
+    def test_rejects_routing_rules_without_index(self, website_validator):
+        website = {
+            "ErrorDocument": "error.html",
+            "RoutingRules": [{"RedirectRule": {"HostName": "example.com"}}],
+        }
+        assert list(website_validator.iter_errors(website)) != []

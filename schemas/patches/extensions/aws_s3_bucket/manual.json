@@ -70,5 +70,29 @@
     "RoutingRules"
    ]
   }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/WebsiteConfiguration/if",
+  "value": {
+   "properties": {
+    "RoutingRules": {
+     "minItems": 1,
+     "type": "array"
+    }
+   },
+   "required": [
+    "RoutingRules"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/WebsiteConfiguration/then",
+  "value": {
+   "required": [
+    "IndexDocument"
+   ]
+  }
  }
 ]
