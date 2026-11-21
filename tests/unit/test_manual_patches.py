@@ -467,3 +467,41 @@ class TestCodeBuildProjectEnums:
     )
     def test_rejects_name(self, validator_for, name):
         assert list(validator_for(None, "Name").iter_errors(name)) != []
+
+
+class TestS3BucketRedirectRuleReplaceKey:
+    """ReplaceKeyWith and ReplaceKeyPrefixWith cannot both be set on a RedirectRule."""
+
+    BASE = {
+        "definitions": {
+            "RedirectRule": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "HostName": {"type": "string"},
+                    "ReplaceKeyPrefixWith": {"type": "string"},
+                    "ReplaceKeyWith": {"type": "string"},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture
+    def redirect_rule_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["RedirectRule"]))
+
+    @pytest.mark.parametrize(
+        "redirect_rule",
+        [
+            {"HostName": "example.com"},
+            {"ReplaceKeyWith": "index.html"},
+            {"ReplaceKeyPrefixWith": "docs/"},
+        ],
+    )
+    def test_accepts(self, redirect_rule_validator, redirect_rule):
+        assert list(redirect_rule_validator.iter_errors(redirect_rule)) == []
+
+    def test_rejects_both_replace_keys(self, redirect_rule_validator):
+        redirect_rule = {"ReplaceKeyWith": "index.html", "ReplaceKeyPrefixWith": "docs/"}
+        assert list(redirect_rule_validator.iter_errors(redirect_rule)) != []
