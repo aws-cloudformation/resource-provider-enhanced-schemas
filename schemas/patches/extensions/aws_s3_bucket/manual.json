@@ -59,5 +59,16 @@
     "ReplaceKeyPrefixWith"
    ]
   }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/WebsiteConfiguration/dependentExcluded",
+  "value": {
+   "RedirectAllRequestsTo": [
+    "ErrorDocument",
+    "IndexDocument",
+    "RoutingRules"
+   ]
+  }
  }
 ]

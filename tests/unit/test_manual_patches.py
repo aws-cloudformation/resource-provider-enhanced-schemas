@@ -505,3 +505,54 @@ class TestS3BucketRedirectRuleReplaceKey:
     def test_rejects_both_replace_keys(self, redirect_rule_validator):
         redirect_rule = {"ReplaceKeyWith": "index.html", "ReplaceKeyPrefixWith": "docs/"}
         assert list(redirect_rule_validator.iter_errors(redirect_rule)) != []
+
+
+class TestS3BucketWebsiteRedirectAllRequestsTo:
+    """RedirectAllRequestsTo excludes every other website setting."""
+
+    BASE = {
+        "definitions": {
+            "WebsiteConfiguration": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "ErrorDocument": {"type": "string"},
+                    "IndexDocument": {"type": "string"},
+                    "RedirectAllRequestsTo": {"type": "object"},
+                    "RoutingRules": {"type": "array", "items": {"type": "object"}},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture
+    def website_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(
+            translate_custom_keywords(schema["definitions"]["WebsiteConfiguration"])
+        )
+
+    @pytest.mark.parametrize(
+        "website",
+        [
+            {"RedirectAllRequestsTo": {"HostName": "example.com"}},
+            {"IndexDocument": "index.html", "ErrorDocument": "error.html"},
+            # CloudFormation drops an empty list before calling S3.
+            {"RedirectAllRequestsTo": {"HostName": "example.com"}, "RoutingRules": []},
+        ],
+    )
+    def test_accepts(self, website_validator, website):
+        assert list(website_validator.iter_errors(website)) == []
+
+    @pytest.mark.parametrize("other", ["ErrorDocument", "IndexDocument"])
+    def test_rejects_redirect_with_document(self, website_validator, other):
+        website = {"RedirectAllRequestsTo": {"HostName": "example.com"}, other: "page.html"}
+        assert list(website_validator.iter_errors(website)) != []
+
+    def test_rejects_redirect_with_routing_rules(self, website_validator):
+        website = {
+            "RedirectAllRequestsTo": {"HostName": "example.com"},
+            "IndexDocument": "index.html",
+            "RoutingRules": [{"RedirectRule": {"HostName": "example.com"}}],
+        }
+        assert list(website_validator.iter_errors(website)) != []
