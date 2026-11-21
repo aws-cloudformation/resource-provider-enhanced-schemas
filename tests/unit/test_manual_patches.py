@@ -467,3 +467,30 @@ class TestCodeBuildProjectEnums:
     )
     def test_rejects_name(self, validator_for, name):
         assert list(validator_for(None, "Name").iter_errors(name)) != []
+
+
+class TestS3BucketMetadataConfigurationVersions:
+    """A bucket takes MetadataConfiguration or the older MetadataTableConfiguration, not both."""
+
+    BASE = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "BucketName": {"type": "string"},
+            "MetadataConfiguration": {"type": "object"},
+            "MetadataTableConfiguration": {"type": "object"},
+        },
+    }
+
+    @pytest.fixture
+    def bucket_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema))
+
+    @pytest.mark.parametrize("key", ["MetadataConfiguration", "MetadataTableConfiguration"])
+    def test_accepts_one(self, bucket_validator, key):
+        assert list(bucket_validator.iter_errors({key: {}})) == []
+
+    def test_rejects_both(self, bucket_validator):
+        bucket = {"MetadataConfiguration": {}, "MetadataTableConfiguration": {}}
+        assert list(bucket_validator.iter_errors(bucket)) != []
