@@ -494,3 +494,38 @@ class TestS3BucketMetadataConfigurationVersions:
     def test_rejects_both(self, bucket_validator):
         bucket = {"MetadataConfiguration": {}, "MetadataTableConfiguration": {}}
         assert list(bucket_validator.iter_errors(bucket)) != []
+
+
+class TestS3BucketMetadataTableEncryptionKmsKey:
+    """An aws:kms metadata table needs a KmsKeyArn."""
+
+    BASE = {
+        "definitions": {
+            "MetadataTableEncryptionConfiguration": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "KmsKeyArn": {"type": "string"},
+                    "SseAlgorithm": {"type": "string", "enum": ["aws:kms", "AES256"]},
+                },
+                "required": ["SseAlgorithm"],
+            }
+        }
+    }
+
+    KEY = "arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+
+    @pytest.fixture
+    def encryption_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(schema["definitions"]["MetadataTableEncryptionConfiguration"])
+
+    @pytest.mark.parametrize(
+        "encryption",
+        [{"SseAlgorithm": "AES256"}, {"SseAlgorithm": "aws:kms", "KmsKeyArn": KEY}],
+    )
+    def test_accepts(self, encryption_validator, encryption):
+        assert list(encryption_validator.iter_errors(encryption)) == []
+
+    def test_rejects_kms_without_key(self, encryption_validator):
+        assert list(encryption_validator.iter_errors({"SseAlgorithm": "aws:kms"})) != []

@@ -59,5 +59,29 @@
     "MetadataConfiguration"
    ]
   }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/MetadataTableEncryptionConfiguration/if",
+  "value": {
+   "properties": {
+    "SseAlgorithm": {
+     "const": "aws:kms",
+     "type": "string"
+    }
+   },
+   "required": [
+    "SseAlgorithm"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/MetadataTableEncryptionConfiguration/then",
+  "value": {
+   "required": [
+    "KmsKeyArn"
+   ]
+  }
  }
 ]
