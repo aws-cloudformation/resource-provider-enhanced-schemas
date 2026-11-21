@@ -59,5 +59,12 @@
     "Days"
    ]
   }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ReplicationTimeValue/properties/Minutes/enum",
+  "value": [
+   15
+  ]
  }
 ]

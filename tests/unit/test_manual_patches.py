@@ -501,3 +501,30 @@ class TestS3BucketDefaultRetentionDaysYears:
     def test_rejects_days_and_years(self, retention_validator):
         retention = {"Mode": "GOVERNANCE", "Days": 30, "Years": 1}
         assert list(retention_validator.iter_errors(retention)) != []
+
+
+class TestS3BucketReplicationTimeMinutes:
+    """Replication Time Control accepts only 15 minutes."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationTimeValue": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"Minutes": {"type": "integer"}},
+                "required": ["Minutes"],
+            }
+        }
+    }
+
+    @pytest.fixture
+    def time_value_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(schema["definitions"]["ReplicationTimeValue"])
+
+    def test_accepts_15(self, time_value_validator):
+        assert list(time_value_validator.iter_errors({"Minutes": 15})) == []
+
+    @pytest.mark.parametrize("minutes", [1, 14, 16, 60])
+    def test_rejects_other_values(self, time_value_validator, minutes):
+        assert list(time_value_validator.iter_errors({"Minutes": minutes})) != []
