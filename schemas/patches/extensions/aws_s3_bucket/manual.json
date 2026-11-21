@@ -47,5 +47,71 @@
   "op": "add",
   "path": "/properties/BucketName/pattern",
   "value": "^([a-z0-9][a-z0-9.-]*[a-z0-9])?$"
+ },
+ {
+  "op": "add",
+  "path": "/dependentExcluded",
+  "value": {
+   "MetadataConfiguration": [
+    "MetadataTableConfiguration"
+   ],
+   "MetadataTableConfiguration": [
+    "MetadataConfiguration"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/MetadataTableEncryptionConfiguration/if",
+  "value": {
+   "properties": {
+    "SseAlgorithm": {
+     "const": "aws:kms",
+     "type": "string"
+    }
+   },
+   "required": [
+    "SseAlgorithm"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/MetadataTableEncryptionConfiguration/then",
+  "value": {
+   "required": [
+    "KmsKeyArn"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/RecordExpiration/if",
+  "value": {
+   "properties": {
+    "Expiration": {
+     "const": "ENABLED",
+     "type": "string"
+    }
+   },
+   "required": [
+    "Expiration"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/RecordExpiration/then",
+  "value": {
+   "properties": {
+    "Days": {
+     "minimum": 7,
+     "type": "integer"
+    }
+   },
+   "required": [
+    "Days"
+   ]
+  }
  }
 ]

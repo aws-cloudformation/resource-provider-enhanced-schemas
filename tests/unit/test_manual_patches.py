@@ -467,3 +467,102 @@ class TestCodeBuildProjectEnums:
     )
     def test_rejects_name(self, validator_for, name):
         assert list(validator_for(None, "Name").iter_errors(name)) != []
+
+
+class TestS3BucketMetadataConfigurationVersions:
+    """A bucket takes MetadataConfiguration or the older MetadataTableConfiguration, not both."""
+
+    BASE = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "BucketName": {"type": "string"},
+            "MetadataConfiguration": {"type": "object"},
+            "MetadataTableConfiguration": {"type": "object"},
+        },
+    }
+
+    @pytest.fixture
+    def bucket_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema))
+
+    @pytest.mark.parametrize("key", ["MetadataConfiguration", "MetadataTableConfiguration"])
+    def test_accepts_one(self, bucket_validator, key):
+        assert list(bucket_validator.iter_errors({key: {}})) == []
+
+    def test_rejects_both(self, bucket_validator):
+        bucket = {"MetadataConfiguration": {}, "MetadataTableConfiguration": {}}
+        assert list(bucket_validator.iter_errors(bucket)) != []
+
+
+class TestS3BucketMetadataTableEncryptionKmsKey:
+    """An aws:kms metadata table needs a KmsKeyArn."""
+
+    BASE = {
+        "definitions": {
+            "MetadataTableEncryptionConfiguration": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "KmsKeyArn": {"type": "string"},
+                    "SseAlgorithm": {"type": "string", "enum": ["aws:kms", "AES256"]},
+                },
+                "required": ["SseAlgorithm"],
+            }
+        }
+    }
+
+    KEY = "arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+
+    @pytest.fixture
+    def encryption_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(schema["definitions"]["MetadataTableEncryptionConfiguration"])
+
+    @pytest.mark.parametrize(
+        "encryption",
+        [{"SseAlgorithm": "AES256"}, {"SseAlgorithm": "aws:kms", "KmsKeyArn": KEY}],
+    )
+    def test_accepts(self, encryption_validator, encryption):
+        assert list(encryption_validator.iter_errors(encryption)) == []
+
+    def test_rejects_kms_without_key(self, encryption_validator):
+        assert list(encryption_validator.iter_errors({"SseAlgorithm": "aws:kms"})) != []
+
+
+class TestS3BucketMetadataRecordExpiration:
+    """Enabled journal record expiration needs Days of at least 7."""
+
+    BASE = {
+        "definitions": {
+            "RecordExpiration": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "Days": {"type": "integer"},
+                    "Expiration": {"type": "string", "enum": ["ENABLED", "DISABLED"]},
+                },
+                "required": ["Expiration"],
+            }
+        }
+    }
+
+    @pytest.fixture
+    def expiration_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(schema["definitions"]["RecordExpiration"])
+
+    @pytest.mark.parametrize(
+        "expiration",
+        [{"Expiration": "ENABLED", "Days": 7}, {"Expiration": "DISABLED"}],
+    )
+    def test_accepts(self, expiration_validator, expiration):
+        assert list(expiration_validator.iter_errors(expiration)) == []
+
+    @pytest.mark.parametrize(
+        "expiration",
+        [{"Expiration": "ENABLED", "Days": 6}, {"Expiration": "ENABLED"}],
+    )
+    def test_rejects(self, expiration_validator, expiration):
+        assert list(expiration_validator.iter_errors(expiration)) != []
