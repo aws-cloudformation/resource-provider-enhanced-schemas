@@ -47,5 +47,51 @@
   "op": "add",
   "path": "/properties/BucketName/pattern",
   "value": "^([a-z0-9][a-z0-9.-]*[a-z0-9])?$"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/DefaultRetention/dependentExcluded",
+  "value": {
+   "Days": [
+    "Years"
+   ],
+   "Years": [
+    "Days"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ReplicationTimeValue/properties/Minutes/enum",
+  "value": [
+   15
+  ]
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ReplicationDestination/dependentRequired",
+  "value": {
+   "AccessControlTranslation": [
+    "Account"
+   ],
+   "Metrics": [
+    "ReplicationTime"
+   ],
+   "ReplicationTime": [
+    "Metrics"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ReplicationRule/dependentExcluded",
+  "value": {
+   "Filter": [
+    "Prefix"
+   ],
+   "Prefix": [
+    "Filter"
+   ]
+  }
  }
 ]

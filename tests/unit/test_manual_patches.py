@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 import regex
-from jsonschema import Draft7Validator, ValidationError, validators
+from jsonschema import Draft7Validator, Draft202012Validator, ValidationError, validators
 
 from cfn_schemas.assembly import apply_patches, translate_custom_keywords
 
@@ -21,6 +21,11 @@ def _regex_pattern(validator, pattern, instance, schema):
 
 
 RegexValidator = validators.extend(Draft7Validator, {"pattern": _regex_pattern})
+
+# dependentRequired is a 2019-09 keyword that cfn-lint enforces; Draft 7 ignores it.
+DependentRequiredValidator = validators.extend(
+    Draft7Validator, {"dependentRequired": Draft202012Validator.VALIDATORS["dependentRequired"]}
+)
 
 
 def _load_manual(resource_dir: str) -> list[dict]:
@@ -467,3 +472,181 @@ class TestCodeBuildProjectEnums:
     )
     def test_rejects_name(self, validator_for, name):
         assert list(validator_for(None, "Name").iter_errors(name)) != []
+
+
+class TestS3BucketDefaultRetentionDaysYears:
+    """An Object Lock DefaultRetention takes Days or Years, not both."""
+
+    BASE = {
+        "definitions": {
+            "DefaultRetention": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "Days": {"type": "integer"},
+                    "Mode": {"type": "string"},
+                    "Years": {"type": "integer"},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture
+    def retention_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["DefaultRetention"]))
+
+    @pytest.mark.parametrize(
+        "retention",
+        [{"Mode": "GOVERNANCE", "Days": 30}, {"Mode": "GOVERNANCE", "Years": 1}],
+    )
+    def test_accepts(self, retention_validator, retention):
+        assert list(retention_validator.iter_errors(retention)) == []
+
+    def test_rejects_days_and_years(self, retention_validator):
+        retention = {"Mode": "GOVERNANCE", "Days": 30, "Years": 1}
+        assert list(retention_validator.iter_errors(retention)) != []
+
+
+class TestS3BucketReplicationTimeMinutes:
+    """Replication Time Control accepts only 15 minutes."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationTimeValue": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"Minutes": {"type": "integer"}},
+                "required": ["Minutes"],
+            }
+        }
+    }
+
+    @pytest.fixture
+    def time_value_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(schema["definitions"]["ReplicationTimeValue"])
+
+    def test_accepts_15(self, time_value_validator):
+        assert list(time_value_validator.iter_errors({"Minutes": 15})) == []
+
+    @pytest.mark.parametrize("minutes", [1, 14, 16, 60])
+    def test_rejects_other_values(self, time_value_validator, minutes):
+        assert list(time_value_validator.iter_errors({"Minutes": minutes})) != []
+
+
+class TestS3BucketReplicationTimeAndMetrics:
+    """A replication destination takes both ReplicationTime and Metrics, or neither."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationDestination": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "AccessControlTranslation": {"type": "object"},
+                    "Account": {"type": "string"},
+                    "Bucket": {"type": "string"},
+                    "Metrics": {"type": "object"},
+                    "ReplicationTime": {"type": "object"},
+                },
+                "required": ["Bucket"],
+            }
+        }
+    }
+
+    BUCKET = "arn:aws:s3:::destination-bucket"
+
+    @pytest.fixture
+    def destination_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return DependentRequiredValidator(schema["definitions"]["ReplicationDestination"])
+
+    def test_accepts_both(self, destination_validator):
+        destination = {"Bucket": self.BUCKET, "ReplicationTime": {}, "Metrics": {}}
+        assert list(destination_validator.iter_errors(destination)) == []
+
+    def test_accepts_neither(self, destination_validator):
+        assert list(destination_validator.iter_errors({"Bucket": self.BUCKET})) == []
+
+    @pytest.mark.parametrize("present", ["ReplicationTime", "Metrics"])
+    def test_rejects_one_without_the_other(self, destination_validator, present):
+        destination = {"Bucket": self.BUCKET, present: {}}
+        assert list(destination_validator.iter_errors(destination)) != []
+
+
+class TestS3BucketReplicationAccessControlTranslation:
+    """AccessControlTranslation needs the destination Account."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationDestination": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "AccessControlTranslation": {"type": "object"},
+                    "Account": {"type": "string"},
+                    "Bucket": {"type": "string"},
+                    "Metrics": {"type": "object"},
+                    "ReplicationTime": {"type": "object"},
+                },
+                "required": ["Bucket"],
+            }
+        }
+    }
+
+    BUCKET = "arn:aws:s3:::destination-bucket"
+
+    @pytest.fixture
+    def destination_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return DependentRequiredValidator(schema["definitions"]["ReplicationDestination"])
+
+    def test_accepts_with_account(self, destination_validator):
+        destination = {
+            "Bucket": self.BUCKET,
+            "Account": "123456789012",
+            "AccessControlTranslation": {},
+        }
+        assert list(destination_validator.iter_errors(destination)) == []
+
+    def test_rejects_without_account(self, destination_validator):
+        destination = {"Bucket": self.BUCKET, "AccessControlTranslation": {}}
+        assert list(destination_validator.iter_errors(destination)) != []
+
+
+class TestS3BucketReplicationRulePrefixFilter:
+    """A replication rule uses the V1 Prefix or the V2 Filter, not both."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationRule": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "Filter": {"type": "object"},
+                    "Prefix": {"type": "string"},
+                    "Status": {"type": "string"},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture
+    def rule_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["ReplicationRule"]))
+
+    @pytest.mark.parametrize(
+        "rule",
+        [
+            {"Status": "Enabled", "Prefix": "logs/"},
+            {"Status": "Enabled", "Filter": {"Prefix": "logs/"}},
+        ],
+    )
+    def test_accepts(self, rule_validator, rule):
+        assert list(rule_validator.iter_errors(rule)) == []
+
+    def test_rejects_prefix_with_filter(self, rule_validator):
+        rule = {"Status": "Enabled", "Prefix": "logs/", "Filter": {"Prefix": "logs/"}}
+        assert list(rule_validator.iter_errors(rule)) != []
