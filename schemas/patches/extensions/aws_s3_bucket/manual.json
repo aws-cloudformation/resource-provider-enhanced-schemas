@@ -66,5 +66,17 @@
   "value": [
    15
   ]
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ReplicationDestination/dependentRequired",
+  "value": {
+   "Metrics": [
+    "ReplicationTime"
+   ],
+   "ReplicationTime": [
+    "Metrics"
+   ]
+  }
  }
 ]

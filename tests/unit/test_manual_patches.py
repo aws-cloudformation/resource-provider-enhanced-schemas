@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 import regex
-from jsonschema import Draft7Validator, ValidationError, validators
+from jsonschema import Draft7Validator, Draft202012Validator, ValidationError, validators
 
 from cfn_schemas.assembly import apply_patches, translate_custom_keywords
 
@@ -21,6 +21,11 @@ def _regex_pattern(validator, pattern, instance, schema):
 
 
 RegexValidator = validators.extend(Draft7Validator, {"pattern": _regex_pattern})
+
+# dependentRequired is a 2019-09 keyword that cfn-lint enforces; Draft 7 ignores it.
+DependentRequiredValidator = validators.extend(
+    Draft7Validator, {"dependentRequired": Draft202012Validator.VALIDATORS["dependentRequired"]}
+)
 
 
 def _load_manual(resource_dir: str) -> list[dict]:
@@ -528,3 +533,43 @@ class TestS3BucketReplicationTimeMinutes:
     @pytest.mark.parametrize("minutes", [1, 14, 16, 60])
     def test_rejects_other_values(self, time_value_validator, minutes):
         assert list(time_value_validator.iter_errors({"Minutes": minutes})) != []
+
+
+class TestS3BucketReplicationTimeAndMetrics:
+    """A replication destination takes both ReplicationTime and Metrics, or neither."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationDestination": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "AccessControlTranslation": {"type": "object"},
+                    "Account": {"type": "string"},
+                    "Bucket": {"type": "string"},
+                    "Metrics": {"type": "object"},
+                    "ReplicationTime": {"type": "object"},
+                },
+                "required": ["Bucket"],
+            }
+        }
+    }
+
+    BUCKET = "arn:aws:s3:::destination-bucket"
+
+    @pytest.fixture
+    def destination_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return DependentRequiredValidator(schema["definitions"]["ReplicationDestination"])
+
+    def test_accepts_both(self, destination_validator):
+        destination = {"Bucket": self.BUCKET, "ReplicationTime": {}, "Metrics": {}}
+        assert list(destination_validator.iter_errors(destination)) == []
+
+    def test_accepts_neither(self, destination_validator):
+        assert list(destination_validator.iter_errors({"Bucket": self.BUCKET})) == []
+
+    @pytest.mark.parametrize("present", ["ReplicationTime", "Metrics"])
+    def test_rejects_one_without_the_other(self, destination_validator, present):
+        destination = {"Bucket": self.BUCKET, present: {}}
+        assert list(destination_validator.iter_errors(destination)) != []
