@@ -573,3 +573,43 @@ class TestS3BucketReplicationTimeAndMetrics:
     def test_rejects_one_without_the_other(self, destination_validator, present):
         destination = {"Bucket": self.BUCKET, present: {}}
         assert list(destination_validator.iter_errors(destination)) != []
+
+
+class TestS3BucketReplicationAccessControlTranslation:
+    """AccessControlTranslation needs the destination Account."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationDestination": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "AccessControlTranslation": {"type": "object"},
+                    "Account": {"type": "string"},
+                    "Bucket": {"type": "string"},
+                    "Metrics": {"type": "object"},
+                    "ReplicationTime": {"type": "object"},
+                },
+                "required": ["Bucket"],
+            }
+        }
+    }
+
+    BUCKET = "arn:aws:s3:::destination-bucket"
+
+    @pytest.fixture
+    def destination_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return DependentRequiredValidator(schema["definitions"]["ReplicationDestination"])
+
+    def test_accepts_with_account(self, destination_validator):
+        destination = {
+            "Bucket": self.BUCKET,
+            "Account": "123456789012",
+            "AccessControlTranslation": {},
+        }
+        assert list(destination_validator.iter_errors(destination)) == []
+
+    def test_rejects_without_account(self, destination_validator):
+        destination = {"Bucket": self.BUCKET, "AccessControlTranslation": {}}
+        assert list(destination_validator.iter_errors(destination)) != []

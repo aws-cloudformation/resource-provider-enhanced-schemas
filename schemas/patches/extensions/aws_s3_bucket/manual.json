@@ -71,6 +71,9 @@
   "op": "add",
   "path": "/definitions/ReplicationDestination/dependentRequired",
   "value": {
+   "AccessControlTranslation": [
+    "Account"
+   ],
    "Metrics": [
     "ReplicationTime"
    ],
