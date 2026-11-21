@@ -35,6 +35,12 @@
    ],
    "ObjectSizeLessThan": [
     "AbortIncompleteMultipartUpload"
+   ],
+   "Transition": [
+    "Transitions"
+   ],
+   "Transitions": [
+    "Transition"
    ]
   }
  },
@@ -47,5 +53,107 @@
   "op": "add",
   "path": "/properties/BucketName/pattern",
   "value": "^([a-z0-9][a-z0-9.-]*[a-z0-9])?$"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Rule/not",
+  "value": {
+   "properties": {
+    "ExpiredObjectDeleteMarker": {
+     "const": true,
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "ExpiredObjectDeleteMarker",
+    "ExpirationInDays"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Rule/if",
+  "value": {
+   "anyOf": [
+    {
+     "required": [
+      "ExpirationDate"
+     ]
+    },
+    {
+     "properties": {
+      "Transition": {
+       "required": [
+        "TransitionDate"
+       ],
+       "type": "object"
+      }
+     },
+     "required": [
+      "Transition"
+     ]
+    },
+    {
+     "properties": {
+      "Transitions": {
+       "contains": {
+        "required": [
+         "TransitionDate"
+        ],
+        "type": "object"
+       },
+       "type": "array"
+      }
+     },
+     "required": [
+      "Transitions"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Rule/then",
+  "value": {
+   "not": {
+    "anyOf": [
+     {
+      "required": [
+       "ExpirationInDays"
+      ]
+     },
+     {
+      "properties": {
+       "Transition": {
+        "required": [
+         "TransitionInDays"
+        ],
+        "type": "object"
+       }
+      },
+      "required": [
+       "Transition"
+      ]
+     },
+     {
+      "properties": {
+       "Transitions": {
+        "contains": {
+         "required": [
+          "TransitionInDays"
+         ],
+         "type": "object"
+        },
+        "type": "array"
+       }
+      },
+      "required": [
+       "Transitions"
+      ]
+     }
+    ]
+   }
+  }
  }
 ]
