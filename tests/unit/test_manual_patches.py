@@ -561,3 +561,83 @@ class TestS3BucketLifecycleExpiredObjectDeleteMarker:
     def test_rejects_delete_marker_with_expiration_days(self, rule_validator):
         rule = {"Status": "Enabled", "ExpiredObjectDeleteMarker": True, "ExpirationInDays": 30}
         assert list(rule_validator.iter_errors(rule)) != []
+
+
+class TestS3BucketLifecycleDateDaysMix:
+    """A lifecycle rule schedules its expiration and transitions by date or by days, not both."""
+
+    BASE = {
+        "definitions": {
+            "Rule": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "AbortIncompleteMultipartUpload": {"type": "object"},
+                    "ExpirationDate": {"type": "string"},
+                    "ExpirationInDays": {"type": "integer"},
+                    "ExpiredObjectDeleteMarker": {"type": "boolean"},
+                    "ObjectSizeGreaterThan": {"type": "string"},
+                    "ObjectSizeLessThan": {"type": "string"},
+                    "Status": {"type": "string"},
+                    "Transition": {"type": "object"},
+                    "Transitions": {"type": "array", "items": {"type": "object"}},
+                },
+                "required": ["Status"],
+            }
+        }
+    }
+
+    @pytest.fixture
+    def rule_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["Rule"]))
+
+    DATE = "2030-01-01T00:00:00Z"
+
+    @pytest.mark.parametrize(
+        "rule",
+        [
+            {
+                "Status": "Enabled",
+                "ExpirationDate": "2030-01-01T00:00:00Z",
+                "Transitions": [
+                    {"StorageClass": "GLACIER", "TransitionDate": "2029-01-01T00:00:00Z"}
+                ],
+            },
+            {
+                "Status": "Enabled",
+                "ExpirationInDays": 365,
+                "Transition": {"StorageClass": "GLACIER", "TransitionInDays": 30},
+            },
+            {"Status": "Enabled", "ExpirationInDays": 365},
+        ],
+    )
+    def test_accepts(self, rule_validator, rule):
+        assert list(rule_validator.iter_errors(rule)) == []
+
+    @pytest.mark.parametrize(
+        "rule",
+        [
+            {
+                "Status": "Enabled",
+                "ExpirationInDays": 365,
+                "Transitions": [
+                    {"StorageClass": "GLACIER", "TransitionDate": "2029-01-01T00:00:00Z"}
+                ],
+            },
+            {
+                "Status": "Enabled",
+                "ExpirationDate": "2030-01-01T00:00:00Z",
+                "Transition": {"StorageClass": "GLACIER", "TransitionInDays": 30},
+            },
+            {
+                "Status": "Enabled",
+                "Transitions": [
+                    {"StorageClass": "STANDARD_IA", "TransitionInDays": 30},
+                    {"StorageClass": "GLACIER", "TransitionDate": "2029-01-01T00:00:00Z"},
+                ],
+            },
+        ],
+    )
+    def test_rejects_mix(self, rule_validator, rule):
+        assert list(rule_validator.iter_errors(rule)) != []
