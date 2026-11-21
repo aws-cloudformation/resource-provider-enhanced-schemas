@@ -81,5 +81,17 @@
     "Metrics"
    ]
   }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/ReplicationRule/dependentExcluded",
+  "value": {
+   "Filter": [
+    "Prefix"
+   ],
+   "Prefix": [
+    "Filter"
+   ]
+  }
  }
 ]

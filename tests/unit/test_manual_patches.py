@@ -613,3 +613,40 @@ class TestS3BucketReplicationAccessControlTranslation:
     def test_rejects_without_account(self, destination_validator):
         destination = {"Bucket": self.BUCKET, "AccessControlTranslation": {}}
         assert list(destination_validator.iter_errors(destination)) != []
+
+
+class TestS3BucketReplicationRulePrefixFilter:
+    """A replication rule uses the V1 Prefix or the V2 Filter, not both."""
+
+    BASE = {
+        "definitions": {
+            "ReplicationRule": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "Filter": {"type": "object"},
+                    "Prefix": {"type": "string"},
+                    "Status": {"type": "string"},
+                },
+            }
+        }
+    }
+
+    @pytest.fixture
+    def rule_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["ReplicationRule"]))
+
+    @pytest.mark.parametrize(
+        "rule",
+        [
+            {"Status": "Enabled", "Prefix": "logs/"},
+            {"Status": "Enabled", "Filter": {"Prefix": "logs/"}},
+        ],
+    )
+    def test_accepts(self, rule_validator, rule):
+        assert list(rule_validator.iter_errors(rule)) == []
+
+    def test_rejects_prefix_with_filter(self, rule_validator):
+        rule = {"Status": "Enabled", "Prefix": "logs/", "Filter": {"Prefix": "logs/"}}
+        assert list(rule_validator.iter_errors(rule)) != []
