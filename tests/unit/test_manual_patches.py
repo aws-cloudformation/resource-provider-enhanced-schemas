@@ -516,3 +516,48 @@ class TestS3BucketLifecycleTransitionSingularPlural:
             "Transitions": [self.TRANSITION],
         }
         assert list(rule_validator.iter_errors(rule)) != []
+
+
+class TestS3BucketLifecycleExpiredObjectDeleteMarker:
+    """ExpiredObjectDeleteMarker: true cannot be combined with ExpirationInDays."""
+
+    BASE = {
+        "definitions": {
+            "Rule": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "AbortIncompleteMultipartUpload": {"type": "object"},
+                    "ExpirationDate": {"type": "string"},
+                    "ExpirationInDays": {"type": "integer"},
+                    "ExpiredObjectDeleteMarker": {"type": "boolean"},
+                    "ObjectSizeGreaterThan": {"type": "string"},
+                    "ObjectSizeLessThan": {"type": "string"},
+                    "Status": {"type": "string"},
+                    "Transition": {"type": "object"},
+                    "Transitions": {"type": "array", "items": {"type": "object"}},
+                },
+                "required": ["Status"],
+            }
+        }
+    }
+
+    @pytest.fixture
+    def rule_validator(self):
+        schema = apply_patches(self.BASE, _load_manual("aws_s3_bucket"))
+        return Draft7Validator(translate_custom_keywords(schema["definitions"]["Rule"]))
+
+    @pytest.mark.parametrize(
+        "rule",
+        [
+            {"Status": "Enabled", "ExpiredObjectDeleteMarker": True},
+            {"Status": "Enabled", "ExpirationInDays": 30},
+            {"Status": "Enabled", "ExpiredObjectDeleteMarker": False, "ExpirationInDays": 30},
+        ],
+    )
+    def test_accepts(self, rule_validator, rule):
+        assert list(rule_validator.iter_errors(rule)) == []
+
+    def test_rejects_delete_marker_with_expiration_days(self, rule_validator):
+        rule = {"Status": "Enabled", "ExpiredObjectDeleteMarker": True, "ExpirationInDays": 30}
+        assert list(rule_validator.iter_errors(rule)) != []

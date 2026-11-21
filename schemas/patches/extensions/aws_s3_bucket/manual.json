@@ -53,5 +53,21 @@
   "op": "add",
   "path": "/properties/BucketName/pattern",
   "value": "^([a-z0-9][a-z0-9.-]*[a-z0-9])?$"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/Rule/not",
+  "value": {
+   "properties": {
+    "ExpiredObjectDeleteMarker": {
+     "const": true,
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "ExpiredObjectDeleteMarker",
+    "ExpirationInDays"
+   ]
+  }
  }
 ]
