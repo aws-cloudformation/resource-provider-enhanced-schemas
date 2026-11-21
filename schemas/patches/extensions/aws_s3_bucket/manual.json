@@ -47,5 +47,52 @@
   "op": "add",
   "path": "/properties/BucketName/pattern",
   "value": "^([a-z0-9][a-z0-9.-]*[a-z0-9])?$"
+ },
+ {
+  "op": "add",
+  "path": "/definitions/RedirectRule/dependentExcluded",
+  "value": {
+   "ReplaceKeyPrefixWith": [
+    "ReplaceKeyWith"
+   ],
+   "ReplaceKeyWith": [
+    "ReplaceKeyPrefixWith"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/WebsiteConfiguration/dependentExcluded",
+  "value": {
+   "RedirectAllRequestsTo": [
+    "ErrorDocument",
+    "IndexDocument",
+    "RoutingRules"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/WebsiteConfiguration/if",
+  "value": {
+   "properties": {
+    "RoutingRules": {
+     "minItems": 1,
+     "type": "array"
+    }
+   },
+   "required": [
+    "RoutingRules"
+   ]
+  }
+ },
+ {
+  "op": "add",
+  "path": "/definitions/WebsiteConfiguration/then",
+  "value": {
+   "required": [
+    "IndexDocument"
+   ]
+  }
  }
 ]
